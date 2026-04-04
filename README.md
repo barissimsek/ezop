@@ -129,16 +129,6 @@ See [ezop-sdk/python/README.md](ezop-sdk/python/README.md) for the full API refe
 
 See [ezop-platform/database/README.md](ezop-platform/database/README.md) for schema ownership, migration strategy, and deployment instructions.
 
-## CI
-
-Each project has its own GitHub Actions workflow that runs on changes to its directory:
-
-| Workflow | Triggers on |
-|---|---|
-| `.github/workflows/sdk.yml` | `ezop-sdk/**` |
-| `.github/workflows/platform.yml` | `ezop-platform/**` |
-| `.github/workflows/ui.yml` | `ezop-light-ui/**` |
-
 ## License
 
 Apache 2.0
