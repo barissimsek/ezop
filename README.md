@@ -8,10 +8,9 @@ Ezop is an open-source observability platform for AI agents. It tracks agent reg
 
 ## Screenshots
 
-![Agent Inventory](.github/screenshots/01-Ezop-Inventory.png)
 ![Performance Charts](.github/screenshots/02-Ezop-Charts-1.png)
-![Events](.github/screenshots/03-Ezop-Events.png)
-![Audit Log](.github/screenshots/04-Ezop-AuditLog.png)
+
+[Agent Inventory](.github/screenshots/01-Ezop-Inventory.png) · [Events](.github/screenshots/03-Ezop-Events.png) · [Audit Log](.github/screenshots/04-Ezop-AuditLog.png)
 
 ## Architecture
 
