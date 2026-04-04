@@ -141,4 +141,4 @@ Each project has its own GitHub Actions workflow that runs on changes to its dir
 
 ## License
 
-MIT
+Apache 2.0
