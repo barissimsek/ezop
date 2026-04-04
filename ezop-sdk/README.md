@@ -65,7 +65,3 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 ## License
 
 [Apache 2.0](LICENSE)
-
----
-
-Copyright 2026 Ezop Inc. Ezop™ is a trademark of Ezop Inc.
