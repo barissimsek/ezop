@@ -199,13 +199,14 @@ agent.emit(
 | Tool subtypes | `http`, `database`, `filesystem`, `api` |
 | Error subtypes | `timeout`, `rate_limit`, `validation`, `tool_error`, `llm_error` |
 
-For LLM events, always include token usage in `metadata` to enable cost tracking:
+For LLM events, always include token usage and model in `metadata` to enable cost tracking:
 
 ```python
 agent.emit(
     name="llm.call",
     category="llm",
     metadata={
+        "model": "claude-opus-4-5",
         "usage": {
             "input_tokens": 12,
             "output_tokens": 8,
@@ -214,27 +215,7 @@ agent.emit(
 )
 ```
 
-Popular LLMs return token usage in their responses — map it directly:
-
-```python
-# Anthropic
-response = anthropic.messages.create(...)
-agent.emit(name="llm.call", category="llm", metadata={
-    "usage": {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    },
-})
-
-# OpenAI
-response = openai.chat.completions.create(...)
-agent.emit(name="llm.call", category="llm", metadata={
-    "usage": {
-        "input_tokens": response.usage.prompt_tokens,
-        "output_tokens": response.usage.completion_tokens,
-    },
-})
-```
+Popular LLMs return token usage in their responses — map it directly.
 
 ---
 
