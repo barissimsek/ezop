@@ -10,7 +10,7 @@ pip install ezop
 
 ```bash
 export EZOP_API_KEY=your-key
-export EZOP_API_URL=https://api.ezop.ai
+export EZOP_API_URL=http://localhost:13000
 ```
 
 See [starter.py](starter.py) for a complete working example.
