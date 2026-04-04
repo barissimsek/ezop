@@ -10,7 +10,7 @@ RUN npm ci
 
 # ── Migrate ───────────────────────────────────────────────────────────────────
 FROM base AS migrate
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat postgresql-client
 WORKDIR /app
 
 COPY package.json package-lock.json ./
