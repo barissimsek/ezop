@@ -1,0 +1,6 @@
+export const TEST_USER_ID  = "aaaaaaaa-0000-0000-0000-000000000001"
+export const TEST_ORG_ID   = "aaaaaaaa-0000-0000-0000-000000000002"
+export const TEST_AGENT_ID = "aaaaaaaa-0000-0000-0000-000000000003"
+export const TEST_RUN_ID   = "aaaaaaaa-0000-0000-0000-000000000004"
+export const TEST_KEY_ID   = "aaaaaaaa-0000-0000-0000-000000000005"
+export const TEST_USER_EMAIL = "playwright@test.example.com"

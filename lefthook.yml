@@ -1,0 +1,38 @@
+pre-commit:
+  parallel: true
+  commands:
+    ui-lint:
+      root: "ezop-light-ui/"
+      glob: "ezop-light-ui/**/*.{ts,tsx}"
+      run: npm run lint
+    ui-typecheck:
+      root: "ezop-light-ui/"
+      glob: "ezop-light-ui/**/*.{ts,tsx}"
+      run: npx tsc --noEmit
+    platform-lint:
+      root: "ezop-platform/"
+      glob: "ezop-platform/**/*.py"
+      run: ruff check {staged_files}
+    platform-format:
+      root: "ezop-platform/"
+      glob: "ezop-platform/**/*.py"
+      run: ruff format --check {staged_files}
+    sdk-lint:
+      root: "ezop-sdk/python/"
+      glob: "ezop-sdk/**/*.py"
+      run: .venv/bin/ruff check ezop/ tests/ && .venv/bin/ruff format --check ezop/ tests/
+    sdk-typecheck:
+      root: "ezop-sdk/python/"
+      glob: "ezop-sdk/**/*.py"
+      run: .venv/bin/pyright ezop/
+
+pre-push:
+  commands:
+    ui-build:
+      root: "ezop-light-ui/"
+      glob: "ezop-light-ui/**"
+      run: npm run build
+    sdk-test:
+      root: "ezop-sdk/python/"
+      glob: "ezop-sdk/**/*.py"
+      run: make test

@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ezop
+      POSTGRES_PASSWORD: ezop
+      POSTGRES_DB: ezop
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ezop-platform/database/current:/docker-entrypoint-initdb.d
+    ports:
+      - "13002:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ezop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  platform:
+    build: ./ezop-platform
+    restart: unless-stopped
+    ports:
+      - "13000:13000"
+    environment:
+      DATABASE_URL: postgresql://ezop:ezop@postgres:5432/ezop
+      EZOP_PORT: 13000
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    build:
+      context: ./ezop-light-ui
+      target: migrate
+    command: node node_modules/prisma/build/index.js db push --schema prisma/schema.prisma
+    environment:
+      DATABASE_URL: postgresql://ezop:ezop@postgres:5432/ezop
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  ui:
+    build: ./ezop-light-ui
+    restart: unless-stopped
+    ports:
+      - "13001:13001"
+    environment:
+      DATABASE_URL: postgresql://ezop:ezop@postgres:5432/ezop
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      EZOP_API_URL: http://platform:13000
+      PORT: "13001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      platform:
+        condition: service_started
+
+volumes:
+  postgres_data:

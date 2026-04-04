@@ -1,0 +1,348 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String               @id @db.Uuid
+  email          String               @unique
+  created_at     DateTime             @default(now()) @db.Timestamptz(6)
+  firstname      String?
+  lastname       String?
+  apiKeysCreated ApiKey[]             @relation("CreatedBy")
+  memberships    OrganizationMember[]
+
+  @@map("users")
+}
+
+model Organization {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  created_at     DateTime             @default(now()) @db.Timestamptz(6)
+  plan           plan_t?              @default(free)
+  updated_at     DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
+  agent_runs     AgentRun[]
+  agent_versions AgentVersion[]
+  agents         Agent[]
+  apiKeys        ApiKey[]
+  auditLogs      AuditLog[]
+  events         Event[]
+  members        OrganizationMember[]
+  spans          Span[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  user_id         String       @db.Uuid
+  organization_id String       @db.Uuid
+  role            String       @default("member")
+  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user            User         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, organization_id])
+  @@map("organization_members")
+}
+
+model Agent {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String
+  owner               String
+  default_permissions String[]
+  description         String?
+  runtime             String?
+  created_at          DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime       @default(now()) @db.Timestamptz(6)
+  organization_id     String         @db.Uuid
+  runs                AgentRun[]
+  versions            AgentVersion[]
+  organization        Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "agents_org_fkey")
+
+  @@unique([name, owner, organization_id], map: "agents_name_owner_unique")
+  @@index([name])
+  @@index([organization_id], map: "agents_org_idx")
+  @@index([owner])
+  @@map("agents")
+}
+
+model AgentVersion {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id        String       @db.Uuid
+  version         String
+  permissions     String[]
+  changelog       String?
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  organization_id String       @db.Uuid
+  agent_runs      AgentRun[]
+  agent           Agent        @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations   Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "agent_versions_org_fkey")
+
+  @@unique([agent_id, version])
+  @@index([agent_id])
+  @@index([organization_id], map: "agent_versions_org_idx")
+  @@index([version])
+  @@map("agent_versions")
+}
+
+model AgentRun {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id        String        @db.Uuid
+  version_id      String?       @db.Uuid
+  user_id         String?       @db.Uuid
+  start_time      DateTime      @default(now()) @db.Timestamptz(6)
+  end_time        DateTime?     @default(now()) @db.Timestamptz(6)
+  status          run_status
+  metadata        Json?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  message         String?
+  organization_id String        @db.Uuid
+  agent           Agent         @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations   Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  agent_versions  AgentVersion? @relation(fields: [version_id], references: [id], onUpdate: NoAction)
+  events          Event[]
+  spans           Span[]
+
+  @@index([agent_id])
+  @@index([start_time])
+  @@index([status])
+  @@index([version_id])
+  @@map("agent_runs")
+}
+
+model Event {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id          String         @db.Uuid
+  span_id         String?        @db.Uuid
+  name            String
+  timestamp       DateTime       @default(now()) @db.Timestamptz(6)
+  input           Json?
+  output          Json?
+  metadata        Json?
+  error           Json?
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  organization_id String         @db.Uuid
+  sequence        BigInt         @default(autoincrement())
+  category        event_category
+  type            event_type?
+  subtype         event_subtype?
+  iteration_id    Int?
+  organizations   Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  run             AgentRun       @relation(fields: [run_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spans           Span?          @relation(fields: [span_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([category, timestamp(sort: Desc)], map: "events_category_time_idx")
+  @@index([run_id, iteration_id], map: "events_iteration_idx")
+  @@index([name])
+  @@index([organization_id], map: "events_org_idx")
+  @@index([run_id, category, type], map: "events_reasoning_idx")
+  @@index([run_id])
+  @@index([run_id, timestamp], map: "events_run_time_idx")
+  @@index([span_id])
+  @@index([span_id, timestamp], map: "events_span_time_idx")
+  @@index([timestamp])
+  @@map("events")
+}
+
+model Span {
+  run_id          String       @db.Uuid
+  name            String
+  start_time      DateTime     @default(now()) @db.Timestamptz(6)
+  end_time        DateTime?    @db.Timestamptz(6)
+  metadata        Json?
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime     @default(now()) @db.Timestamptz(6)
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parent_id       String?      @db.Uuid
+  organization_id String       @db.Uuid
+  events          Event[]
+  organizations   Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parent          Span?        @relation("SpanTree", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  children        Span[]       @relation("SpanTree")
+  run             AgentRun     @relation(fields: [run_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([run_id])
+  @@index([parent_id])
+  @@index([run_id, start_time], map: "spans_run_start_idx")
+  @@index([start_time])
+  @@map("spans")
+}
+
+model ApiKey {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  description     String?
+  key_prefix      String       @unique(map: "api_keys_prefix_unique")
+  key_hash        String
+  scopes          String[]     @default([])
+  last_used_at    DateTime?    @db.Timestamptz(6)
+  expires_at      DateTime?    @db.Timestamptz(6)
+  revoked_at      DateTime?    @db.Timestamptz(6)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  organization_id String       @db.Uuid
+  created_by      String?      @db.Uuid
+  plan            String?
+  createdByUser   User?        @relation("CreatedBy", fields: [created_by], references: [id], onUpdate: NoAction)
+  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([key_prefix])
+  @@map("api_keys")
+}
+
+model AuditLog {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String         @db.Uuid
+  actor_type      String
+  actor_id        String?        @db.Uuid
+  action          audit_action_t
+  resource_type   String
+  resource_id     String?        @db.Uuid
+  metadata        Json           @default("{}")
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  organization    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_audit_logs_org")
+
+  @@index([action], map: "idx_audit_logs_action")
+  @@index([created_at(sort: Desc)], map: "idx_audit_logs_created_at")
+  @@index([organization_id], map: "idx_audit_logs_org")
+  @@map("audit_logs")
+}
+
+model ServiceCost {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  service_type    String
+  service_name    String
+  unit_cost       Decimal   @default(0) @db.Decimal(18, 6)
+  unit_type       String
+  description     String?
+  pricing_details Json?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("service_costs")
+}
+
+model Plan {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       plan_t   @unique
+  version    Int      @default(1)
+  limits     Json     @default("{}")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("plans")
+}
+
+enum actor_type_t {
+  system
+  user
+  api
+}
+
+enum audit_action_t {
+  org_created
+  org_updated
+  org_deleted
+  plan_changed
+  billing_status_changed
+  agent_created
+  agent_updated
+  agent_deleted
+  run_started
+  run_completed
+  run_failed
+  event_ingested
+  events_deleted
+  span_recorded
+  limit_exceeded
+  rate_limited
+  retention_enforced
+  user_added
+  user_removed
+  role_updated
+  system_error
+  system_maintenance
+  apikey_created
+  apikey_updated
+  apikey_deleted
+}
+
+enum event_category {
+  agent
+  llm
+  tool
+  reasoning
+  system
+  user
+  memory
+  cost
+  error
+}
+
+enum event_status {
+  in_progress
+  ok
+  error
+  cancelled
+}
+
+enum event_subtype {
+  chain_of_thought
+  react
+  reflection
+  self_consistency
+  http
+  database
+  filesystem
+  api
+  timeout
+  rate_limit
+  validation
+  tool_error
+  llm_error
+}
+
+enum event_type {
+  agent_run_started
+  agent_run_completed
+  agent_run_failed
+  llm_request
+  llm_response
+  reasoning_step
+  reasoning_plan
+  reasoning_reflection
+  reasoning_decision
+  reasoning_final
+  tool_call_started
+  tool_call_completed
+  tool_call_failed
+  tool_retry
+  memory_query
+  memory_retrieval
+  memory_write
+  span_started
+  span_completed
+  user_input
+  user_feedback
+  cost_calculated
+  error_raised
+}
+
+enum plan_t {
+  free
+  starter
+  growth
+  enterprise
+}
+
+enum run_status {
+  running
+  success
+  failed
+  partial
+  cancelled
+}

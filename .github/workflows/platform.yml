@@ -1,0 +1,44 @@
+name: Platform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ezop-platform/**'
+      - '.github/workflows/platform.yml'
+  pull_request:
+    paths:
+      - 'ezop-platform/**'
+      - '.github/workflows/platform.yml'
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ezop-platform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            ezop-platform/requirements.txt
+            ezop-platform/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint
+        run: .venv/bin/ruff check app/ tests/
+
+      - name: Test
+        run: .venv/bin/python -m pytest tests/ -v
+        env:
+          DATABASE_URL: "postgresql://unused:unused@localhost/unused"

@@ -1,0 +1,8 @@
+.next
+node_modules
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+playwright-report
+e2e/.auth

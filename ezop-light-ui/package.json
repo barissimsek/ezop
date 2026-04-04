@@ -1,0 +1,43 @@
+{
+  "name": "ezop-light-ui",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
+    "@stripe/stripe-js": "^9.0.0",
+    "@types/pg": "^8.20.0",
+    "@xyflow/react": "^12.10.1",
+    "next": "^16.2.1",
+    "next-auth": "5.0.0-beta.30",
+    "next-themes": "^0.4.6",
+    "pg": "^8.20.0",
+    "prisma": "^7.6.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^3.8.0",
+    "stripe": "^21.0.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "dotenv": "^17.3.1",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.2",
+    "lefthook": "^2.1.4",
+    "typescript": "^5"
+  }
+}
