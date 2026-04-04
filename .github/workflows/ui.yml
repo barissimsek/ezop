@@ -97,7 +97,7 @@ jobs:
         env:
           DATABASE_URL: "postgresql://ezop:ezop@localhost:5432/ezop_test"
           AUTH_SECRET: "ci-secret-at-least-32-characters-long"
-          AUTH_TEST_SECRET: ${{ secrets.AUTH_TEST_SECRET }}
+          AUTH_TEST_SECRET: ${{ secrets.AUTH_TEST_SECRET || 'ci-e2e-test-secret-playwright' }}
           EZOP_API_URL: "http://localhost:13000"
 
       - name: Upload Playwright report
