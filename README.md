@@ -2,6 +2,10 @@
 
 Ezop is an open-source observability platform for AI agents. It tracks agent registrations, versions, runs, spans, and events so you have full visibility into every agent deployment.
 
+## Historical Æsop
+
+[Aesop](https://en.wikipedia.org/wiki/Aesop) (Ancient Greek: Αἴσωπος, *Aísōpos*; c. 620–564 BCE) was a Greek fabulist and storyteller credited with a collection of tales now known as Aesop's Fables — moral stories featuring anthropomorphic animals that have been retold across cultures for over two millennia. Though no writings by him survive and his very existence is debated, ancient sources including Aristotle, Herodotus, and Plutarch record scattered details of his life. He is traditionally described as a slave who won his freedom through wit and went on to advise kings and city-states. The name *Ezop* is the Turkish rendering of Æsop, and it felt like the right name for a platform built around agents that observe, reason, and tell the story of what happened.
+
 ## Architecture
 
 ```
