@@ -21,7 +21,7 @@ Run:
 from ezop import Agent
 
 agent = Agent.init(
-    name="my-agent-2",
+    name="my-agent",
     owner="my-team",
     version="v1.0",
     runtime="python",
@@ -60,21 +60,12 @@ try:
                 output=weather,
             )
 
-        # Back in the parent span
-        # Some LLM call here
-        # construct metadata from LLM response
-
         agent.emit(
             name="llm.response",
             category="llm",
             type="llm_response",
-            output={
-                "text": f"It is {weather['temperature']} and {weather['condition']} in Paris."
-            },
-            metadata={
-                "model": "claude-opus-4-5",
-                "usage": {"input_tokens": 12, "output_tokens": 18},
-            },
+            output={"text": f"It is {weather['temperature']} and {weather['condition']} in Paris."},
+            metadata={"usage": {"input_tokens": 12, "output_tokens": 18}},
         )
 
     agent.close(status="success")

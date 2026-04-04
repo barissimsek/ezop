@@ -29,11 +29,10 @@ try:
             type="llm_response",
             output={"text": response},
             metadata={
-                "model": "claude-opus-4-5",
                 "usage": {
                     "input_tokens": 10,
                     "output_tokens": 5,
-                },
+                }
             },
         )
 

@@ -1,0 +1,12 @@
+pre-commit:
+  parallel: false
+  jobs:
+    - name: ruff
+      run: cd python && .venv/bin/ruff check ezop/ tests/ && .venv/bin/ruff format --check ezop/ tests/
+    - name: pyright
+      run: cd python && .venv/bin/pyright ezop/
+
+pre-push:
+  jobs:
+    - name: test
+      run: cd python && make test

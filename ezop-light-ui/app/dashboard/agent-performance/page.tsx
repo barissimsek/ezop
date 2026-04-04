@@ -98,6 +98,12 @@ export default async function AgentPerformancePage({
     costPerModel[row.service_name] = Number(row.unit_cost)
   }
 
+  console.log("[cost-debug] DATABASE_URL:", process.env.DATABASE_URL)
+  console.log("[cost-debug] orgId:", orgId)
+  console.log("[cost-debug] llmEvents count:", llmEvents.length)
+  console.log("[cost-debug] costPerModel:", costPerModel)
+  console.log("[cost-debug] all events:", JSON.stringify(llmEvents, null, 2))
+
   const statusCounts = {
     running:  runs.filter(r => r.status === "running").length,
     success:  runs.filter(r => r.status === "success").length,
@@ -130,10 +136,12 @@ export default async function AgentPerformancePage({
     const llmCost = llmEvents
       .filter(e => e.timestamp?.toISOString().slice(0, 10) === dayStr)
       .reduce((sum, e) => {
-        const meta = e.metadata as { model?: string; input_tokens?: number; output_tokens?: number } | null
+        const meta = e.metadata as { model?: string; input_tokens?: number; output_tokens?: number; usage?: { input_tokens?: number; output_tokens?: number } } | null
         if (!meta) return sum
         const unitCost = costPerModel[meta.model ?? ""] ?? 0
-        const tokens = (meta.input_tokens ?? 0) + (meta.output_tokens ?? 0)
+        const inputTokens = meta.input_tokens ?? meta.usage?.input_tokens ?? 0
+        const outputTokens = meta.output_tokens ?? meta.usage?.output_tokens ?? 0
+        const tokens = inputTokens + outputTokens
         return sum + (tokens / 1000) * unitCost
       }, 0)
     return {
