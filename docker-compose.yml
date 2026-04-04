@@ -8,7 +8,6 @@ services:
       POSTGRES_DB: ezop
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./ezop-platform/database/current:/docker-entrypoint-initdb.d
     ports:
       - "13002:5432"
     healthcheck:
@@ -36,9 +35,16 @@ services:
     build:
       context: ./ezop-light-ui
       target: migrate
-    command: node node_modules/prisma/build/index.js db push --schema prisma/schema.prisma
+    command: >
+      sh -c "
+        node node_modules/prisma/build/index.js db push --schema prisma/schema.prisma &&
+        psql $$DATABASE_URL -f /sql/03-functions.sql &&
+        psql $$DATABASE_URL -f /sql/04-minimum-data.sql
+      "
     environment:
       DATABASE_URL: postgresql://ezop:ezop@postgres:5432/ezop
+    volumes:
+      - ./ezop-platform/database/current:/sql
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,6 +57,7 @@ services:
       - "13001:13001"
     environment:
       DATABASE_URL: postgresql://ezop:ezop@postgres:5432/ezop
+      AUTH_URL: http://localhost:13001
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
