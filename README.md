@@ -104,7 +104,7 @@ Sign in with your Google account, then go to **Settings → API Keys** to create
 | Variable | Default | Description |
 |---|---|---|
 | `EZOP_API_KEY` | — | API key from the dashboard (required) |
-| `EZOP_API_URL` | `https://api.ezop.ai` | Platform URL |
+| `EZOP_API_URL` | `http://localhost:13000` | Platform URL |
 
 ```bash
 pip install ezop
