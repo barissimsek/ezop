@@ -67,24 +67,9 @@ export default async function EventsPage({
       })
     : [];
 
-  // Resolve run_ids for agent filter
-  let runIds: string[] | null = null;
-  if (agentId && orgId) {
-    const runRows = await prisma.agentRun.findMany({
-      where: {
-        organization_id: orgId,
-        agent_id: agentId,
-        start_time: { gte: since },
-      },
-      select: { id: true },
-    });
-    runIds = runRows.map((r: (typeof runRows)[0]) => r.id);
-  }
-
-  const noRuns = agentId && runIds !== null && runIds.length === 0;
-
   const eventSelect = {
     id: true,
+    agent_id: true,
     name: true,
     category: true,
     type: true,
@@ -101,6 +86,7 @@ export default async function EventsPage({
 
   type EventRow = {
     id: string;
+    agent_id: string;
     name: string;
     category: string | null;
     type: string | null;
@@ -118,11 +104,11 @@ export default async function EventsPage({
   let eventsData: EventRow[] = [];
   let total = 0;
 
-  if (!noRuns && orgId) {
+  if (orgId) {
     const baseWhere = {
       organization_id: orgId,
       timestamp: { gte: since },
-      ...(runIds !== null ? { run_id: { in: runIds } } : {}),
+      ...(agentId ? { agent_id: agentId } : {}),
     };
 
     if (view === "flat") {
@@ -150,40 +136,32 @@ export default async function EventsPage({
     }
   }
 
-  // Resolve agent names for all run_ids in events
-  const pageRunIds = [
-    ...new Set(
-      eventsData.map((e) => e.run_id).filter((id): id is string => Boolean(id)),
-    ),
+  // Resolve agent names directly from events.agent_id
+  const agentIds = [
+    ...new Set(eventsData.map((e) => e.agent_id).filter((id): id is string => Boolean(id))),
   ];
-  let runToAgent: Record<string, string> = {};
+  const agentNameRows: { id: string; name: string }[] =
+    agentIds.length > 0
+      ? await prisma.agent.findMany({
+          where: { id: { in: agentIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+  const agentNameById: Record<string, string> = {};
+  for (const a of agentNameRows) agentNameById[a.id] = a.name;
 
-  if (pageRunIds.length > 0) {
-    const runRows: { id: string; agent_id: string }[] =
-      await prisma.agentRun.findMany({
-        where: { id: { in: pageRunIds } },
-        select: { id: true, agent_id: true },
-      });
-    const agentIds = [
-      ...new Set(runRows.map((r) => r.agent_id).filter(Boolean)),
-    ];
-    const agentNameRows: { id: string; name: string }[] =
-      agentIds.length > 0
-        ? await prisma.agent.findMany({
-            where: { id: { in: agentIds } },
-            select: { id: true, name: true },
-          })
-        : [];
-    const agentNameById: Record<string, string> = {};
-    for (const a of agentNameRows) agentNameById[a.id] = a.name;
-    for (const r of runRows)
-      runToAgent[r.id] = agentNameById[r.agent_id] ?? "—";
+  const runToAgent: Record<string, string> = {};
+  for (const e of eventsData) {
+    if (e.run_id && e.agent_id) runToAgent[e.run_id] = agentNameById[e.agent_id] ?? "—";
   }
 
   // ── Build tree for hierarchy view ────────────────────────────────────────────
   let runGroups: RunGroup[] = [];
 
-  if (view === "tree" && pageRunIds.length > 0) {
+  if (view === "tree" && eventsData.length > 0) {
+    const pageRunIds = [
+      ...new Set(eventsData.map((e) => e.run_id).filter((id): id is string => Boolean(id))),
+    ];
     const spansData = await prisma.span.findMany({
       where: { run_id: { in: pageRunIds } },
       select: {
