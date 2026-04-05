@@ -1,12 +1,12 @@
 """Tests for /runs endpoints."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from tests.conftest import EVENT_ID, ORG_ID, RUN_ID, SPAN_ID, make_exec
+from tests.conftest import AGENT_ID, EVENT_ID, ORG_ID, RUN_ID, SPAN_ID, make_exec
 
 RUN_ROW = {
     "id": RUN_ID,
-    "agent_id": "aaaaaaaa-0000-0000-0000-000000000002",
+    "agent_id": AGENT_ID,
     "version_id": None,
     "user_id": None,
     "status": "success",
@@ -22,6 +22,7 @@ RUN_ROW = {
 SPAN_ROW = {
     "id": SPAN_ID,
     "run_id": RUN_ID,
+    "agent_id": AGENT_ID,
     "name": "llm.call",
     "organization_id": ORG_ID,
     "start_time": "2024-01-01T00:00:00+00:00",
@@ -35,6 +36,7 @@ SPAN_ROW = {
 EVENT_ROW = {
     "id": EVENT_ID,
     "run_id": RUN_ID,
+    "agent_id": AGENT_ID,
     "span_id": None,
     "name": "llm.response",
     "category": "llm",
@@ -52,10 +54,17 @@ EVENT_ROW = {
 }
 
 
+def _run_row_with_agent_id():
+    """Mock .first() result for _get_run_agent — has a real agent_id attribute."""
+    row = MagicMock()
+    row.agent_id = AGENT_ID
+    return row
+
+
 class TestEndRun:
     def test_returns_200(self, client, db):
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=RUN_ROW),
         ]
         resp = client.patch(f"/runs/{RUN_ID}", json={"status": "success"})
@@ -65,7 +74,7 @@ class TestEndRun:
     def test_with_message_and_metadata(self, client, db):
         row = {**RUN_ROW, "message": "done", "metadata": {"tokens": 100}}
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=row),
         ]
         resp = client.patch(
@@ -96,7 +105,7 @@ class TestEndRun:
 class TestCreateSpan:
     def test_returns_201(self, client, db):
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=SPAN_ROW),
         ]
         resp = client.post(
@@ -106,8 +115,17 @@ class TestCreateSpan:
         assert resp.status_code == 201
         assert resp.json()["data"]["id"] == SPAN_ID
 
+    def test_create_span_includes_agent_id(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=_run_row_with_agent_id()),
+            make_exec(mapping=SPAN_ROW),
+        ]
+        resp = client.post(f"/runs/{RUN_ID}/spans", json={"name": "llm.call"})
+        assert resp.status_code == 201
+        assert resp.json()["data"]["agent_id"] == AGENT_ID
+
     def test_span_is_own_parent_returns_422(self, client, db):
-        db.execute.side_effect = [make_exec(first=True)]
+        db.execute.side_effect = [make_exec(first=_run_row_with_agent_id())]
         resp = client.post(
             f"/runs/{RUN_ID}/spans",
             json={"id": SPAN_ID, "name": "x", "parent_id": SPAN_ID},
@@ -117,7 +135,7 @@ class TestCreateSpan:
     def test_parent_not_found_returns_404(self, client, db):
         other_span = "bbbbbbbb-0000-0000-0000-000000000001"
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=None),  # parent lookup returns None
         ]
         resp = client.post(
@@ -130,7 +148,7 @@ class TestCreateSpan:
         other_span = "bbbbbbbb-0000-0000-0000-000000000001"
         other_run = "cccccccc-0000-0000-0000-000000000001"
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping={"run_id": other_run}),
         ]
         resp = client.post(
@@ -149,7 +167,7 @@ class TestEmitEvent:
     @patch("app.routers.runs.assert_events_limit")
     def test_returns_201(self, mock_limit, client, db):
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=EVENT_ROW),
         ]
         resp = client.post(
@@ -160,9 +178,22 @@ class TestEmitEvent:
         assert resp.json()["data"]["name"] == "llm.response"
 
     @patch("app.routers.runs.assert_events_limit")
+    def test_emit_event_includes_agent_id(self, mock_limit, client, db):
+        db.execute.side_effect = [
+            make_exec(first=_run_row_with_agent_id()),
+            make_exec(mapping=EVENT_ROW),
+        ]
+        resp = client.post(
+            f"/runs/{RUN_ID}/events",
+            json={"name": "llm.response", "category": "llm"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["data"]["agent_id"] == AGENT_ID
+
+    @patch("app.routers.runs.assert_events_limit")
     def test_with_metadata(self, mock_limit, client, db):
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=EVENT_ROW),
         ]
         resp = client.post(
@@ -196,7 +227,7 @@ class TestEmitEvent:
     @patch("app.routers.runs.assert_events_limit")
     def test_span_not_found_returns_404(self, mock_limit, client, db):
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping=None),  # span lookup returns None
         ]
         resp = client.post(
@@ -209,7 +240,7 @@ class TestEmitEvent:
     def test_span_in_different_run_returns_422(self, mock_limit, client, db):
         other_run = "cccccccc-0000-0000-0000-000000000001"
         db.execute.side_effect = [
-            make_exec(first=True),
+            make_exec(first=_run_row_with_agent_id()),
             make_exec(mapping={"run_id": other_run}),
         ]
         resp = client.post(
