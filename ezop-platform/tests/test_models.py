@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from app.models.runs import Event, Span
 
 
