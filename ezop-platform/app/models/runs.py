@@ -64,6 +64,7 @@ class Span(BaseModel):
 
     id: UUID
     run_id: UUID
+    agent_id: UUID
     parent_id: UUID | None
     name: str | None
     start_time: datetime
@@ -79,6 +80,7 @@ class Event(BaseModel):
 
     id: UUID
     run_id: UUID
+    agent_id: UUID
     span_id: UUID | None
     name: str
     category: EventCategory

@@ -140,10 +140,12 @@ create table public.spans (
   id uuid not null default gen_random_uuid (),
   parent_id uuid null,
   organization_id uuid not null,
+  agent_id uuid not null,
   constraint spans_pkey primary key (id),
   constraint spans_organization_id_fkey foreign KEY (organization_id) references organizations (id) on delete CASCADE,
   constraint spans_parent_id_fkey foreign KEY (parent_id) references spans (id) on delete CASCADE,
   constraint spans_run_id_fkey foreign KEY (run_id) references agent_runs (id) on delete CASCADE,
+  constraint spans_agent_fkey foreign KEY (agent_id) references agents (id) on delete CASCADE,
   constraint spans_no_self_parent check ((id <> parent_id))
 ) TABLESPACE pg_default;
 
@@ -154,6 +156,8 @@ create index IF not exists spans_start_time_idx on public.spans using btree (sta
 create index IF not exists spans_run_start_idx on public.spans using btree (run_id, start_time) TABLESPACE pg_default;
 
 create index IF not exists spans_parent_id_idx on public.spans using btree (parent_id) TABLESPACE pg_default;
+
+create index IF not exists spans_agent_start_idx on public.spans using btree (agent_id, start_time desc) TABLESPACE pg_default;
 
 create trigger update_spans_updated_at BEFORE
 update on spans for EACH row
@@ -176,10 +180,12 @@ create table public.events (
   type public.event_type null,
   subtype public.event_subtype null,
   iteration_id integer null,
+  agent_id uuid not null,
   constraint events_pkey primary key (id),
   constraint events_organization_id_fkey foreign KEY (organization_id) references organizations (id) on delete CASCADE,
   constraint events_run_id_fkey foreign KEY (run_id) references agent_runs (id) on delete CASCADE,
   constraint events_span_id_fkey foreign KEY (span_id) references spans (id) on delete CASCADE,
+  constraint events_agent_fkey foreign KEY (agent_id) references agents (id) on delete CASCADE,
   constraint events_type_requires_category check (
     (
       (
@@ -297,6 +303,10 @@ create index IF not exists events_reasoning_idx on public.events using btree (ru
 create index IF not exists events_iteration_idx on public.events using btree (run_id, iteration_id) TABLESPACE pg_default;
 
 create index IF not exists events_category_time_idx on public.events using btree (category, "timestamp" desc) TABLESPACE pg_default;
+
+create index IF not exists events_agent_time_idx on public.events using btree (agent_id, "timestamp" desc) TABLESPACE pg_default;
+
+create index IF not exists events_agent_category_idx on public.events using btree (agent_id, category, "timestamp" desc) TABLESPACE pg_default;
 
 create table public.api_keys (
   id uuid not null default gen_random_uuid (),

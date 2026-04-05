@@ -24,6 +24,7 @@ git checkout -b feat/your-feature-name
 
 - Keep changes focused — one bug fix or feature per PR
 - Follow the existing code style (the project uses standard Python conventions)
+- Big structural changes must include a design spec and a plan generated via `superpower::brainstorm`.
 - Add or update tests for any behaviour you change
 - Run the test suite before submitting:
 
