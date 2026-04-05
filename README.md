@@ -1,6 +1,6 @@
 # Ezop
 
-Ezop is an open-source observability platform for AI agents. It tracks agent registrations, versions, runs, spans, and events so you have full visibility into every agent deployment.
+Ezop is a vendor-agnostic open-source observability platform for AI agents. It tracks agent registrations, versions, runs, spans, and events so you have full visibility into every agent deployment.
 
 Ezop isn’t a metrics or logging system—it’s AI-native observability that understands your agents’ intent and where they get stuck.
 
