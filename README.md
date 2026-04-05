@@ -120,11 +120,6 @@ Sign in with your Google account, then go to **Settings → API Keys** to create
 
 ### ezop-sdk (Python)
 
-| Variable | Default | Description |
-|---|---|---|
-| `EZOP_API_KEY` | — | API key from the dashboard (required) |
-| `EZOP_API_URL` | `http://localhost:13000` | Platform URL |
-
 ```bash
 pip install ezop
 export EZOP_API_URL=http://localhost:13000
