@@ -6,10 +6,10 @@ Ezop isn’t a metrics or logging system—it’s AI-native observability that u
 
 **What makes Ezop different**
 
-Intent-aware tracing → not just events, but goals, steps, and outcomes
-Reasoning visibility → inspect agent decisions, tool usage, and paths taken
-Failure understanding → detect stalls, loops, and degraded behavior
-Agent-centric model → built for autonomous systems, not stateless requests
+* Intent-aware tracing → not just events, but goals, steps, and outcomes
+* Reasoning visibility → inspect agent decisions, tool usage, and paths taken
+* Failure understanding → detect stalls, loops, and degraded behavior
+* Agent-centric model → built for autonomous systems, not stateless requests
 
 ## Historical Æsop
 
