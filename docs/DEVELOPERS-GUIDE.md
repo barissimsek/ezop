@@ -55,6 +55,8 @@ docker compose logs -f        # tail all logs
 docker compose down -v        # stop and delete the database volume
 ```
 
+Because you want to see your changes immediately, probably you want to bring only the postgres up with `docker-compose` and run other services manually.
+
 ---
 
 ### Option B — Manual setup (per service)
@@ -129,7 +131,7 @@ LOG_LEVEL=INFO
 Start the server:
 
 ```bash
-DATABASE_URL=postgresql://... .venv/bin/hypercorn app.main:app --reload
+DATABASE_URL=postgresql://... .venv/bin/uvicorn app.main:app --reload --port 13000
 ```
 
 API is at http://localhost:13000.
