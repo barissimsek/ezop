@@ -143,6 +143,10 @@ See [ezop-sdk/python/README.md](ezop-sdk/python/README.md) for the full API refe
 
 See [ezop-platform/database/README.md](ezop-platform/database/README.md) for schema ownership, migration strategy, and deployment instructions.
 
+## Contributors
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started and [docs/DEVELOPERS-GUIDE.md](docs/DEVELOPERS-GUIDE.md) for architecture notes, local setup, and development workflows.
+
 ## License
 
 Apache 2.0
