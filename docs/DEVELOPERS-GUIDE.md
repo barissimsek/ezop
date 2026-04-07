@@ -131,7 +131,8 @@ LOG_LEVEL=INFO
 Start the server:
 
 ```bash
-DATABASE_URL=postgresql://... .venv/bin/uvicorn app.main:app --reload --port 13000
+export DATABASE_URL=postgresql://ezop:ezop@localhost:13002/ezop
+.venv/bin/uvicorn app.main:app --reload --port 13000
 ```
 
 API is at http://localhost:13000.
