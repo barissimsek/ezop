@@ -1,10 +1,11 @@
 """Tests for /spans endpoints."""
 
-from tests.conftest import ORG_ID, RUN_ID, SPAN_ID, make_exec
+from tests.conftest import AGENT_ID, ORG_ID, RUN_ID, SPAN_ID, make_exec
 
 SPAN_ROW = {
     "id": SPAN_ID,
     "run_id": RUN_ID,
+    "agent_id": AGENT_ID,
     "name": "llm.call",
     "organization_id": ORG_ID,
     "start_time": "2024-01-01T00:00:00+00:00",

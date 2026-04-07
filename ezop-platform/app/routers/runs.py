@@ -56,14 +56,15 @@ class CreateSpanRequest(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _assert_run_org(db: Session, run_id: str, org_id: str) -> None:
-    """Raise 404 if the run doesn't exist or doesn't belong to org_id."""
+def _get_run_agent(db: Session, run_id: str, org_id: str) -> str:
+    """Return agent_id for the run, or raise 404 if not found."""
     row = db.execute(
-        text("SELECT id FROM agent_runs WHERE id = :id AND organization_id = :org_id"),
+        text("SELECT agent_id FROM agent_runs WHERE id = :id AND organization_id = :org_id"),
         {"id": run_id, "org_id": org_id},
     ).first()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found.")
+    return str(row.agent_id)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ def end_run(
     org_id: Annotated[str, Depends(verify_api_key)],
 ) -> JSONResponse:
     """Update a run record with final status and optional message/metadata."""
-    _assert_run_org(db, run_id, org_id)
+    _get_run_agent(db, run_id, org_id)  # validates ownership; agent_id not needed here
     logger.info("Ending run id=%s status=%s", run_id, payload.status)
 
     set_parts = ["status = :status", "end_time = :end_time"]
@@ -125,7 +126,7 @@ def create_span(
     org_id: Annotated[str, Depends(verify_api_key)],
 ) -> JSONResponse:
     """Create a new span for a run. Optionally nested under a parent span."""
-    _assert_run_org(db, run_id, org_id)
+    agent_id = _get_run_agent(db, run_id, org_id)
 
     if payload.id and payload.parent_id and payload.id == payload.parent_id:
         raise HTTPException(
@@ -152,9 +153,9 @@ def create_span(
                 detail="Parent span belongs to a different run.",
             )
 
-    cols = ["run_id", "organization_id"]
-    vals = [":run_id", ":org_id"]
-    params: dict = {"run_id": run_id, "org_id": org_id}
+    cols = ["run_id", "organization_id", "agent_id"]
+    vals = [":run_id", ":org_id", ":agent_id"]
+    params: dict = {"run_id": run_id, "org_id": org_id, "agent_id": agent_id}
     for field in ("id", "name", "start_time", "parent_id", "metadata"):
         value = getattr(payload, field)
         if value is not None:
@@ -199,7 +200,7 @@ def emit_event(
     org_id: Annotated[str, Depends(verify_api_key)],
 ) -> JSONResponse:
     """Append a single event to a run's event log."""
-    _assert_run_org(db, run_id, org_id)
+    agent_id = _get_run_agent(db, run_id, org_id)
     assert_events_limit(db, org_id)
 
     if payload.span_id:
@@ -221,13 +222,14 @@ def emit_event(
 
     logger.info("Emitting event run_id=%s name=%s", run_id, payload.name)
 
-    cols = ["run_id", "name", "category", "organization_id"]
-    vals = [":run_id", ":name", ":category", ":org_id"]
+    cols = ["run_id", "name", "category", "organization_id", "agent_id"]
+    vals = [":run_id", ":name", ":category", ":org_id", ":agent_id"]
     params: dict = {
         "run_id": run_id,
         "name": payload.name,
         "category": payload.category,
         "org_id": org_id,
+        "agent_id": agent_id,
     }
     json_fields = {"input", "output", "metadata", "error"}
     for field in (

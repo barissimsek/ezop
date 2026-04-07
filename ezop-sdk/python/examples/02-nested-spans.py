@@ -35,7 +35,10 @@ try:
             category="llm",
             type="llm_request",
             input={"prompt": "What is the weather in Paris?"},
-            metadata={"usage": {"input_tokens": 12, "output_tokens": 0}},
+            metadata={
+                "model": "claude-opus-4-5",
+                "usage": {"input_tokens": 12, "output_tokens": 0},
+            },
         )
 
         # Child span — parent_id is set automatically

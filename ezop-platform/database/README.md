@@ -1,7 +1,5 @@
 # Database
 
-Schema ownership lives here. Prisma (`ezop-light-ui`) is a consumer — it syncs table structure in development environments only and is never used in production.
-
 ## Structure
 
 ```
@@ -20,74 +18,36 @@ database/
     └── YYYYMMDDHHMMSS-description.sql
 ```
 
-The current schema = `base/` + all files in `migrations/` applied in timestamp order.  
+The current schema = `base/` + all files in `migrations/` applied in timestamp order.
+
 `current/` always reflects this combined state and is the reference for deployments.
 
-## Development (Docker Compose)
-
-The `migrate` service in `docker-compose.yml` runs automatically on `docker compose up` and handles everything in order:
+## Initializing Database
 
 1. `prisma db push` — creates and syncs all tables (handles circular foreign keys safely)
 2. `psql ... current/03-functions.sql` — stored procedures and triggers
 3. `psql ... current/04-minimum-data.sql` — seed data
 
-To reset to a clean state:
+In local dev environment:
+
+The `migrate` service in `docker-compose.yml` runs automatically on `docker compose up` and handles all three steps above.
+
+## Schema Migration
+
+Apply only the incremental migration files that haven't been applied yet:
 
 ```bash
-docker compose down -v   # removes the postgres volume
-docker compose up --build
+# Apply a single migration
+psql $DATABASE_URL -f database/migrations/2026/20260405152758-add-agent-id-to-events-and-spans.sql
+
+# Apply all pending migrations in order (bash)
+for f in database/migrations/2026/*.sql; do
+  psql $DATABASE_URL -f "$f"
+done
 ```
 
-## Production (no Docker Compose)
-
-**Fresh database** — apply `current/` in order:
-
-```bash
-psql $DATABASE_URL -f database/current/01-enumerated-types.sql
-psql $DATABASE_URL -f database/current/02-base-schemas.sql
-psql $DATABASE_URL -f database/current/03-functions.sql
-psql $DATABASE_URL -f database/current/04-minimum-data.sql
-```
-
-**Release deployment** — apply new incremental migrations, then refresh stored procedures and seed data:
-
-```bash
-# 1. Apply schema changes
-psql $DATABASE_URL -f database/migrations/20240615120000-add-agent-tags.sql
-
-# 2. Re-apply stored procedures (CREATE OR REPLACE — safe to re-run)
-psql $DATABASE_URL -f database/current/03-functions.sql
-
-# 3. Re-apply seed data (INSERT ... ON CONFLICT DO NOTHING — safe to re-run)
-psql $DATABASE_URL -f database/current/04-minimum-data.sql
-```
-
-## Prisma schema
-
-`ezop-light-ui/prisma/schema.prisma` is a **consumer** of this schema — it does not own it. Developers maintain `schema.prisma` manually and keep it in sync with `current/` after every migration. It is never generated from the database automatically.
-
-`prisma db push` runs only in environments where the database is ephemeral and disposable:
-
-- Docker Compose (`migrate` service) — spins up a fresh database from scratch
-- GitHub Actions — CI builds with a temporary database
-
-It is **never** run in production. Production databases are managed exclusively through the SQL migration files in this directory.
-
-To sync `schema.prisma` after applying a migration:
-
-```bash
-cd ezop-light-ui
-DATABASE_URL=postgresql://... npx prisma db pull
-```
-
-## Adding a schema change
-
-1. Create `database/migrations/YYYYMMDDHHMMSS-description.sql` with the diff SQL
-2. Update the relevant `database/current/` files to reflect the new state
-3. Open a PR — reviewed and merged like any code change
-4. Apply during the next release deployment
-
-## Rules
-
-- Migration files are never edited after they are merged. Corrections require a new file.
-- GitHub is the source of truth and change management system.
+**Rules:**
+- Migration files are applied in timestamp order and never edited after being merged.
+- Each file is idempotent where possible, but re-applying is not guaranteed safe — track which migrations have run.
+- If a migration fails partway through, fix the underlying issue before retrying. Do not partially re-apply.
+- Corrections to a bad migration require a new migration file, not editing the original.
