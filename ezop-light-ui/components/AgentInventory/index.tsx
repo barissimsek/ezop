@@ -277,7 +277,7 @@ function RunDetail({ run, events, isLoading }: { run: AgentRun; events: RunEvent
                 <li key={sr.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "#4B5563" }}>
                   <span style={{ fontFamily: "monospace" }}>{sr.id.slice(0, 8)}</span>
                   <span>{sr.status}</span>
-                  <span>{sr.durationS !== null ? `${sr.durationS.toFixed(1)}s` : "—"}</span>
+                  <span>{sr.durationS !== null ? `${sr.durationS}s` : "—"}</span>
                 </li>
               ))}
             </ul>
