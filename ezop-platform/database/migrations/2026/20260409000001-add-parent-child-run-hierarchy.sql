@@ -13,7 +13,7 @@ ALTER TABLE agent_runs ALTER COLUMN root_run_id SET NOT NULL;
 
 -- Prevent a run from being its own parent.
 ALTER TABLE agent_runs
-  ADD CONSTRAINT agent_runs_no_self_parent CHECK (parent_run_id != id);
+  ADD CONSTRAINT agent_runs_no_self_parent CHECK (parent_run_id <> id);
 
 -- Index for "fetch all runs in this tree" queries.
-CREATE INDEX agent_runs_root_run_id_idx ON agent_runs (root_run_id);
+CREATE INDEX IF NOT EXISTS agent_runs_root_run_id_idx ON agent_runs (root_run_id);
