@@ -19,8 +19,8 @@ This is a monorepo with three projects:
 ## Workflows to follow
 
 - After generating Prisma migrations, also create them in the specified folder and update `ezop-platform/database/current/` to reflect the latest database schema.
+- Persists database migrations under `ezop-platform/database/migrations/YYYY` folder.
 - Always review tests after making any changes. Update existing tests if interfaces change, and add new tests when introducing important functionality.
-- Don’t commit agent-generated intermediary files (e.g., design specs like “superpowers”).
 - Platform API changes are tightly coupled to SDK client interfaces. Keep them in sync—changes in one often require changes in the other. Always evaluate updates with this in mind.
 - Big structural changes must include a design spec and a plan generated via `superpower::brainstorm`.
 - Never merge changes directly into `main` or `develop`, and do not create pull requests programmatically. All merges must be done on GitHub via manually created pull requests.
