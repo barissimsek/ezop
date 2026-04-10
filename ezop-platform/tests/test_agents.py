@@ -229,3 +229,14 @@ class TestStartRunTrigger:
             json={"trigger_type": "agent", "parent_run_id": PARENT_RUN_ID},
         )
         assert resp.status_code == 422
+
+    def test_agent_trigger_nonexistent_parent_returns_422(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=True),  # _assert_agent_org passes
+            make_exec(mapping=None),  # parent_run_id not found in DB
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "agent", "parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 422
