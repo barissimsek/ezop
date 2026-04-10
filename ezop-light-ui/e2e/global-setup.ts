@@ -41,7 +41,7 @@ setup("seed database and authenticate", async ({ page }) => {
   await prisma.agentRun.upsert({
     where:  { id: TEST_RUN_ID },
     update: {},
-    create: { id: TEST_RUN_ID, agent_id: TEST_AGENT_ID, organization_id: TEST_ORG_ID, status: "success", start_time: new Date(Date.now() - 60000), end_time: new Date() },
+    create: { id: TEST_RUN_ID, agent_id: TEST_AGENT_ID, organization_id: TEST_ORG_ID, status: "success", start_time: new Date(Date.now() - 60000), end_time: new Date(), root_run_id: TEST_RUN_ID },
   })
 
   await prisma.apiKey.upsert({
