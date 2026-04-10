@@ -114,11 +114,15 @@ create table public.agent_runs (
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   message text null,
+  parent_run_id uuid null,
+  root_run_id uuid not null,
   organization_id uuid not null,
   constraint agent_runs_pkey primary key (id),
   constraint agent_runs_agent_id_fkey foreign KEY (agent_id) references agents (id) on delete CASCADE,
   constraint agent_runs_organization_id_fkey foreign KEY (organization_id) references organizations (id) on delete CASCADE,
-  constraint agent_runs_version_id_fkey foreign KEY (version_id) references agent_versions (id) on delete set null
+  constraint agent_runs_version_id_fkey foreign KEY (version_id) references agent_versions (id) on delete set null,
+  constraint agent_runs_no_self_parent check ((parent_run_id <> id)),
+  constraint agent_runs_parent_run_id_fkey foreign KEY (parent_run_id) references agent_runs (id) on delete set null
 ) TABLESPACE pg_default;
 
 create index IF not exists agent_runs_agent_id_idx on public.agent_runs using btree (agent_id) TABLESPACE pg_default;
@@ -128,6 +132,8 @@ create index IF not exists agent_runs_version_id_idx on public.agent_runs using 
 create index IF not exists agent_runs_start_time_idx on public.agent_runs using btree (start_time) TABLESPACE pg_default;
 
 create index IF not exists agent_runs_status_idx on public.agent_runs using btree (status) TABLESPACE pg_default;
+
+create index IF not exists agent_runs_root_run_id_idx on public.agent_runs using btree (root_run_id) TABLESPACE pg_default;
 
 create table public.spans (
   run_id uuid not null,
