@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from ezop import Agent
-from ezop.models import Event
+from ezop.models import AgentContext, Event
 
 AGENT_RESP = {
     "success": True,
@@ -561,3 +561,15 @@ class TestAgentSpan:
                 agent.emit(name="token.count", category="llm")
         body = mock_emit.call_args[0][1]
         assert body["span_id"] == s.span_id
+
+
+class TestAgentContext:
+    def test_has_name_and_run_id(self):
+        ctx = AgentContext(name="orchestrator", run_id="run-uuid-789")
+        assert ctx.name == "orchestrator"
+        assert ctx.run_id == "run-uuid-789"
+
+    def test_is_immutable(self):
+        ctx = AgentContext(name="orchestrator", run_id="run-uuid-789")
+        with pytest.raises(Exception):
+            ctx.name = "other"  # type: ignore[misc]
