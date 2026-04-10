@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from .client import EzopClient
-from .models import AgentModel, AgentRun, AgentVersion, AgentContext, Event
+from .models import AgentContext, AgentModel, AgentRun, AgentVersion, Event
 
 logger = logging.getLogger(__name__)
 
