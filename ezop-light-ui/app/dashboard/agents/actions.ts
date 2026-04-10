@@ -200,8 +200,10 @@ export type SpawnedRun = {
 };
 
 export async function listSpawnedRuns(parentRunId: string): Promise<SpawnedRun[]> {
+  const { organizationId } = await getOrgContext();
+
   const runs = await prisma.agentRun.findMany({
-    where: { parent_run_id: parentRunId },
+    where: { parent_run_id: parentRunId, organization_id: organizationId },
     select: {
       id: true,
       status: true,
