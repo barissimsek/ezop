@@ -22,6 +22,12 @@ class AgentVersion:
     changelog: Optional[str]
 
 
+@dataclass(frozen=True)
+class AgentContext:
+    name: str
+    run_id: str
+
+
 @dataclass
 class AgentRun:
     id: str
@@ -32,6 +38,8 @@ class AgentRun:
     end_time: Optional[datetime] = None
     metadata: Optional[dict] = None
     message: Optional[str] = None
+    parent_run_id: Optional[str] = None
+    root_run_id: Optional[str] = None
     _current_span_id: Optional[str] = field(default=None, repr=False, compare=False)
 
 
