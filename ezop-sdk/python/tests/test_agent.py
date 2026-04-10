@@ -141,7 +141,13 @@ class TestAgentInit:
             patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
         ):
             Agent.init(name="support-bot", owner="growth-team", version="v0.3", runtime="langchain")
-            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456")
+            mock_run.assert_called_once_with(
+                "agent-uuid-123",
+                "version-uuid-456",
+                trigger_type=None,
+                trigger_id=None,
+                parent_run_id=None,
+            )
 
     def test_optional_fields_default_to_empty(self):
         agent_resp = {**AGENT_RESP, "data": {**AGENT_RESP["data"], "default_permissions": None}}
@@ -561,3 +567,42 @@ class TestAgentSpan:
                 agent.emit(name="token.count", category="llm")
         body = mock_emit.call_args[0][1]
         assert body["span_id"] == s.span_id
+
+
+class TestAgentInitTrigger:
+    def test_agent_trigger_passes_parent_run_id(self):
+        parent_id = "aaaaaaaa-0000-0000-0000-000000000001"
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
+        ):
+            Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+                parent_run_id=parent_id,
+            )
+
+        call_kwargs = mock_run.call_args.kwargs
+        assert call_kwargs["trigger_type"] == "agent"
+        assert call_kwargs["parent_run_id"] == parent_id
+        assert call_kwargs.get("trigger_id") is None
+
+    def test_default_trigger_type_is_none(self):
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
+        ):
+            Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+            )
+
+        call_kwargs = mock_run.call_args.kwargs
+        assert call_kwargs.get("trigger_type") is None
+        assert call_kwargs.get("parent_run_id") is None

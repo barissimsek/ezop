@@ -106,6 +106,9 @@ class Agent:
         default_permissions: Optional[list[str]] = None,
         permissions: Optional[list[str]] = None,
         changelog: Optional[str] = None,
+        trigger_type: Optional[str] = None,
+        trigger_id: Optional[str] = None,
+        parent_run_id: Optional[str] = None,
     ) -> "Agent":
         """
         Initialize an Ezop agent and register it with the Ezop platform.
@@ -161,7 +164,13 @@ class Agent:
         agent = cls(model, agent_version)
 
         logger.info("Starting run for agent id=%s version_id=%s", model.id, agent_version.id)
-        run_data = client.start_run(model.id, agent_version.id)["data"]
+        run_data = client.start_run(
+            model.id,
+            agent_version.id,
+            trigger_type="agent" if parent_run_id else trigger_type,
+            trigger_id=trigger_id,
+            parent_run_id=parent_run_id,
+        )["data"]
         agent.current_run = AgentRun(
             id=run_data["id"],
             agent_id=model.id,
