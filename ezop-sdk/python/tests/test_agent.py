@@ -36,7 +36,7 @@ RUN_RESP = {
         "id": "run-uuid-789",
         "status": "running",
         "parent_run_id": None,
-        "root_run_id": None,
+        "root_run_id": "run-uuid-789",
     },
 }
 
@@ -88,6 +88,32 @@ class TestAgentInit:
         assert agent.current_run.status == "running"
         assert agent.current_run.agent_id == "agent-uuid-123"
         assert agent.current_run.version_id == "version-uuid-456"
+
+    def test_run_has_parent_and_root_ids(self):
+        parent_resp = {
+            "success": True,
+            "error": None,
+            "data": {
+                "id": "run-uuid-789",
+                "status": "running",
+                "parent_run_id": "parent-run-uuid",
+                "root_run_id": "root-run-uuid",
+            },
+        }
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=parent_resp),
+        ):
+            agent = Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+                parent_run_id="parent-run-uuid",
+            )
+        assert agent.current_run.parent_run_id == "parent-run-uuid"
+        assert agent.current_run.root_run_id == "root-run-uuid"
 
     def test_calls_register_agent_with_correct_payload(self):
         with (
