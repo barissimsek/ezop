@@ -184,9 +184,7 @@ class TestAgentInit:
                 runtime="langchain",
                 parent_run_id="parent-run-uuid",
             )
-            mock_run.assert_called_once_with(
-                "agent-uuid-123", "version-uuid-456", parent_run_id="parent-run-uuid"
-            )
+            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456", parent_run_id="parent-run-uuid")
 
     def test_optional_fields_default_to_empty(self):
         agent_resp = {**AGENT_RESP, "data": {**AGENT_RESP["data"], "default_permissions": None}}
