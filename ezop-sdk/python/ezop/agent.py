@@ -299,3 +299,10 @@ class Agent:
                 result = llm.generate(prompt)
         """
         return Span(self, name, metadata=metadata)
+
+    def get_context(self) -> AgentContext:
+        """Return a snapshot of the current run context for passing to child agents."""
+        self._check_active()
+        if self.current_run is None:
+            raise RuntimeError("No active run.")
+        return AgentContext(name=self.model.name, run_id=self.current_run.id)

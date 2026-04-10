@@ -592,3 +592,34 @@ class TestAgentContext:
         ctx = AgentContext(name="orchestrator", run_id="run-uuid-789")
         with pytest.raises(Exception):
             ctx.name = "other"  # type: ignore[misc]
+
+
+class TestGetContext:
+    def test_returns_agent_context(self):
+        agent = make_agent()
+        ctx = agent.get_context()
+        assert isinstance(ctx, AgentContext)
+
+    def test_name_matches_agent_model(self):
+        agent = make_agent()
+        ctx = agent.get_context()
+        assert ctx.name == "support-bot"
+
+    def test_run_id_matches_active_run(self):
+        agent = make_agent()
+        ctx = agent.get_context()
+        assert ctx.run_id == "run-uuid-789"
+
+    def test_raises_when_no_active_run(self):
+        agent = make_agent()
+        agent.current_run = None
+        with pytest.raises(RuntimeError, match="No active run"):
+            agent.get_context()
+
+    def test_raises_after_close(self):
+        agent = make_agent()
+        end_resp = {"success": True, "error": None, "data": {"status": "success", "metadata": None}}
+        with patch("ezop.client.EzopClient.end_run", return_value=end_resp):
+            agent.close(status="success")
+        with pytest.raises(RuntimeError, match="closed"):
+            agent.get_context()
