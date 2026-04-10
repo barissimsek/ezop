@@ -1,5 +1,8 @@
 from uuid import UUID
 
+import pytest
+from pydantic import ValidationError
+
 from app.models.agents import AgentRun as AgentRunModel, TriggerType
 from app.models.runs import Event, Span
 
@@ -44,6 +47,11 @@ def test_agent_run_model_parent_run_id_optional():
 
 def test_trigger_type_enum_values():
     assert set(TriggerType) == {"api", "user", "cron", "webhook", "agent"}
+
+
+def test_agent_run_rejects_invalid_trigger_type():
+    with pytest.raises(ValidationError):
+        AgentRunModel.model_validate({**AGENT_RUN_BASE, "trigger_type": "invalid"})
 
 
 def test_event_model_has_agent_id():

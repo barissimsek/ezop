@@ -60,6 +60,6 @@ class AgentRun(BaseModel):
     end_time: datetime | None
     created_at: datetime
     updated_at: datetime
-    trigger_type: str = "api"
+    trigger_type: TriggerType = TriggerType.api
     trigger_id: str | None = None
     parent_run_id: UUID | None = None
