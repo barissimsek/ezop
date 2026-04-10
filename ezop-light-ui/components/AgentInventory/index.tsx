@@ -37,14 +37,6 @@ const RUN_STATUS_COLOR: Record<AgentRun["status"], string> = {
   cancelled: "#6B7280",
 }
 
-const TRIGGER_COLOR: Record<string, string> = {
-  api:     "bg-gray-100 text-gray-700",
-  user:    "bg-blue-100 text-blue-700",
-  cron:    "bg-purple-100 text-purple-700",
-  webhook: "bg-orange-100 text-orange-700",
-  agent:   "bg-teal-100 text-teal-700",
-}
-
 const TRIGGER_BG: Record<string, string> = {
   api:     "#F3F4F6",
   user:    "#DBEAFE",
@@ -61,10 +53,9 @@ const TRIGGER_TEXT: Record<string, string> = {
   agent:   "#0F766E",
 }
 
-function TriggerBadge({ triggerType, triggerId, parentRunId }: {
+function TriggerBadge({ triggerType, triggerId }: {
   triggerType: string
   triggerId: string | null
-  parentRunId: string | null
 }) {
   const bg   = TRIGGER_BG[triggerType]   ?? "#F3F4F6"
   const text = TRIGGER_TEXT[triggerType] ?? "#374151"
@@ -241,11 +232,19 @@ function SpanTree({ events }: { events: RunEvent[] }) {
 function RunDetail({ run, events, isLoading }: { run: AgentRun; events: RunEvent[]; isLoading: boolean }) {
   const [spawnedRuns, setSpawnedRuns] = useState<SpawnedRun[] | null>(null)
   const [spawnedOpen, setSpawnedOpen] = useState(false)
+  const [isLoadingSpawned, setIsLoadingSpawned] = useState(false)
 
   async function loadSpawned() {
-    if (spawnedRuns !== null) return
-    const runs = await listSpawnedRuns(run.id)
-    setSpawnedRuns(runs)
+    if (spawnedRuns !== null || isLoadingSpawned) return
+    setIsLoadingSpawned(true)
+    try {
+      const runs = await listSpawnedRuns(run.id)
+      setSpawnedRuns(runs)
+    } catch {
+      setSpawnedRuns([])
+    } finally {
+      setIsLoadingSpawned(false)
+    }
   }
 
   return (
@@ -253,7 +252,7 @@ function RunDetail({ run, events, isLoading }: { run: AgentRun; events: RunEvent
       {/* Triggered by */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#4B5563", marginBottom: "0.5rem" }}>
         <span style={{ fontWeight: 500 }}>Triggered by:</span>
-        <TriggerBadge triggerType={run.triggerType} triggerId={run.triggerId} parentRunId={run.parentRunId} />
+        <TriggerBadge triggerType={run.triggerType} triggerId={run.triggerId} />
         {run.triggerType === "agent" && run.parentRunId && (
           <span style={{ fontSize: 11, color: "#9CA3AF" }}>Run {run.parentRunId.slice(0, 8)}</span>
         )}
@@ -269,10 +268,10 @@ function RunDetail({ run, events, isLoading }: { run: AgentRun; events: RunEvent
             <span>{spawnedOpen ? "▾" : "▸"}</span>
             Spawned runs ({run.spawnedRunCount})
           </button>
-          {spawnedOpen && spawnedRuns === null && (
+          {spawnedOpen && isLoadingSpawned && (
             <p style={{ marginTop: 4, fontSize: 11, color: "#9CA3AF" }}>Loading…</p>
           )}
-          {spawnedOpen && spawnedRuns !== null && (
+          {spawnedOpen && !isLoadingSpawned && spawnedRuns !== null && (
             <ul style={{ marginTop: 4, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               {spawnedRuns.map(sr => (
                 <li key={sr.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "#4B5563" }}>
@@ -333,7 +332,7 @@ function RunsTab({ agent }: { agent: Agent }) {
               }}
             >
               <div style={{ fontFamily: "monospace", color: "var(--text-muted)", fontSize: 11 }}>{run.id.slice(0, 8)}</div>
-              <div><TriggerBadge triggerType={run.triggerType} triggerId={run.triggerId} parentRunId={run.parentRunId} /></div>
+              <div><TriggerBadge triggerType={run.triggerType} triggerId={run.triggerId} /></div>
               <span style={{ display: "inline-block", padding: "2px 6px", borderRadius: 99, fontSize: 10, fontWeight: 500, background: RUN_STATUS_COLOR[run.status] + "22", color: RUN_STATUS_COLOR[run.status] }}>{run.status}</span>
               <div style={{ color: "var(--text-muted)" }}>{run.durationS}s</div>
               <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{isExpanded ? "▲" : "▼"}</div>
