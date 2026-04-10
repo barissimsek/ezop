@@ -266,7 +266,7 @@ def test_parent_not_found_returns_404(self, client, db):
         json={"parent_run_id": PARENT_RUN_ID},
     )
     assert resp.status_code == 404
-    assert "Parent run not found" in resp.json()["detail"]
+    assert "Parent run not found" in resp.json()["error"]["message"]
 
 def test_parent_wrong_org_returns_422(self, client, db):
     other_org = "cccccccc-0000-0000-0000-000000000001"
@@ -279,7 +279,7 @@ def test_parent_wrong_org_returns_422(self, client, db):
         json={"parent_run_id": PARENT_RUN_ID},
     )
     assert resp.status_code == 422
-    assert "different organization" in resp.json()["detail"]
+    assert "different organization" in resp.json()["error"]["message"]
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**

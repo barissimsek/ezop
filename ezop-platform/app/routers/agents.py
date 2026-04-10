@@ -260,13 +260,14 @@ def start_run(
         .mappings()
         .first()
     )
-    db.commit()
 
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to start run — unexpected response from database.",
         )
+
+    db.commit()
 
     run = AgentRun.model_validate(dict(row))
     logger.info("Run started id=%s agent_id=%s", run.id, agent_id)
