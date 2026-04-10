@@ -37,6 +37,8 @@ RUN_ROW = {
     "end_time": None,
     "message": None,
     "metadata": None,
+    "parent_run_id": None,
+    "root_run_id": RUN_ID,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
 }
@@ -148,3 +150,16 @@ class TestStartRun:
         db.execute.return_value = make_exec(first=False)
         resp = client.post(f"/agents/{AGENT_ID}/runs", json={})
         assert resp.status_code == 404
+
+
+class TestAgentRunModel:
+    def test_root_run_fields_in_response(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping=RUN_ROW),
+        ]
+        resp = client.post(f"/agents/{AGENT_ID}/runs", json={})
+        assert resp.status_code == 201
+        data = resp.json()["data"]
+        assert data["parent_run_id"] is None
+        assert data["root_run_id"] == RUN_ID

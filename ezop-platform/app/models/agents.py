@@ -47,6 +47,8 @@ class AgentRun(BaseModel):
     status: RunStatus
     metadata: dict | None
     message: str | None
+    parent_run_id: UUID | None
+    root_run_id: UUID
     organization_id: UUID
     start_time: datetime
     end_time: datetime | None
