@@ -4,6 +4,9 @@ from unittest.mock import patch
 
 from tests.conftest import AGENT_ID, ORG_ID, RUN_ID, VERSION_ID, make_exec
 
+PARENT_RUN_ID = "bbbbbbbb-0000-0000-0000-000000000001"
+ROOT_RUN_ID   = "bbbbbbbb-0000-0000-0000-000000000002"
+
 AGENT_ROW = {
     "id": AGENT_ID,
     "name": "my-agent",
@@ -39,6 +42,40 @@ RUN_ROW = {
     "metadata": None,
     "parent_run_id": None,
     "root_run_id": RUN_ID,
+    "created_at": "2024-01-01T00:00:00+00:00",
+    "updated_at": "2024-01-01T00:00:00+00:00",
+}
+
+PARENT_RUN_ROW = {
+    "id": PARENT_RUN_ID,
+    "agent_id": AGENT_ID,
+    "version_id": VERSION_ID,
+    "user_id": None,
+    "status": "running",
+    "organization_id": ORG_ID,
+    "start_time": "2024-01-01T00:00:00+00:00",
+    "end_time": None,
+    "message": None,
+    "metadata": None,
+    "parent_run_id": None,
+    "root_run_id": ROOT_RUN_ID,
+    "created_at": "2024-01-01T00:00:00+00:00",
+    "updated_at": "2024-01-01T00:00:00+00:00",
+}
+
+CHILD_RUN_ROW = {
+    "id": RUN_ID,
+    "agent_id": AGENT_ID,
+    "version_id": VERSION_ID,
+    "user_id": None,
+    "status": "running",
+    "organization_id": ORG_ID,
+    "start_time": "2024-01-01T00:00:00+00:00",
+    "end_time": None,
+    "message": None,
+    "metadata": None,
+    "parent_run_id": PARENT_RUN_ID,
+    "root_run_id": ROOT_RUN_ID,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
 }
@@ -150,6 +187,47 @@ class TestStartRun:
         db.execute.return_value = make_exec(first=False)
         resp = client.post(f"/agents/{AGENT_ID}/runs", json={})
         assert resp.status_code == 404
+
+    def test_start_child_run_returns_201(self, client, db):
+        # DB calls: assert_agent_org, fetch_parent, insert
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping={"root_run_id": ROOT_RUN_ID, "organization_id": ORG_ID}),
+            make_exec(mapping=CHILD_RUN_ROW),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 201
+        data = resp.json()["data"]
+        assert data["parent_run_id"] == PARENT_RUN_ID
+        assert data["root_run_id"] == ROOT_RUN_ID
+
+    def test_parent_not_found_returns_404(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping=None),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 404
+        assert "Parent run not found" in resp.json()["error"]["message"]
+
+    def test_parent_wrong_org_returns_422(self, client, db):
+        other_org = "cccccccc-0000-0000-0000-000000000001"
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping={"root_run_id": ROOT_RUN_ID, "organization_id": other_org}),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 422
+        assert "different organization" in resp.json()["error"]["message"]
 
 
 class TestAgentRunModel:

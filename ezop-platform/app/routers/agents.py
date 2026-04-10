@@ -1,4 +1,5 @@
 import logging
+import uuid as uuid_mod
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -39,6 +40,7 @@ class StartRunRequest(BaseModel):
     version_id: str | None = None
     user_id: str | None = None
     metadata: dict | None = None
+    parent_run_id: str | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -214,17 +216,43 @@ def start_run(
     _assert_agent_org(db, agent_id, org_id)
     logger.info("Starting run agent_id=%s version_id=%s", agent_id, payload.version_id)
 
+    run_id = str(uuid_mod.uuid4())
+    root_run_id = run_id  # default: this run is its own root
+
+    if payload.parent_run_id is not None:
+        parent_row = (
+            db.execute(
+                text("SELECT root_run_id, organization_id FROM agent_runs WHERE id = :id"),
+                {"id": payload.parent_run_id},
+            )
+            .mappings()
+            .first()
+        )
+        if parent_row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent run not found.")
+        if str(parent_row["organization_id"]) != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Parent run belongs to a different organization.",
+            )
+        root_run_id = str(parent_row["root_run_id"])
+
     row = (
         db.execute(
             text("""
-            INSERT INTO agent_runs (agent_id, version_id, user_id, status, metadata, organization_id)
-            VALUES (:agent_id, :version_id, :user_id, 'running', :metadata, :org_id)
-            RETURNING *
-        """),
+                INSERT INTO agent_runs
+                    (id, agent_id, version_id, user_id, parent_run_id, root_run_id, status, metadata, organization_id)
+                VALUES
+                    (:id, :agent_id, :version_id, :user_id, :parent_run_id, :root_run_id, 'running', :metadata, :org_id)
+                RETURNING *
+            """),
             {
+                "id": run_id,
                 "agent_id": agent_id,
                 "version_id": payload.version_id,
                 "user_id": payload.user_id,
+                "parent_run_id": payload.parent_run_id,
+                "root_run_id": root_run_id,
                 "metadata": payload.metadata,
                 "org_id": org_id,
             },
