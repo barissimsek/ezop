@@ -115,10 +115,17 @@ create table public.agent_runs (
   updated_at timestamp with time zone not null default now(),
   message text null,
   organization_id uuid not null,
+  trigger_type text not null default 'api',
+  trigger_id text null,
+  parent_run_id uuid null,
   constraint agent_runs_pkey primary key (id),
   constraint agent_runs_agent_id_fkey foreign KEY (agent_id) references agents (id) on delete CASCADE,
   constraint agent_runs_organization_id_fkey foreign KEY (organization_id) references organizations (id) on delete CASCADE,
-  constraint agent_runs_version_id_fkey foreign KEY (version_id) references agent_versions (id) on delete set null
+  constraint agent_runs_version_id_fkey foreign KEY (version_id) references agent_versions (id) on delete set null,
+  constraint agent_runs_parent_run_id_fkey foreign KEY (parent_run_id) references agent_runs (id) on delete set null,
+  constraint agent_requires_parent check (trigger_type != 'agent' OR parent_run_id IS NOT NULL),
+  constraint non_agent_forbids_parent check (trigger_type = 'agent' OR parent_run_id IS NULL),
+  constraint agent_forbids_trigger_id check (trigger_type != 'agent' OR trigger_id IS NULL)
 ) TABLESPACE pg_default;
 
 create index IF not exists agent_runs_agent_id_idx on public.agent_runs using btree (agent_id) TABLESPACE pg_default;
@@ -128,6 +135,10 @@ create index IF not exists agent_runs_version_id_idx on public.agent_runs using 
 create index IF not exists agent_runs_start_time_idx on public.agent_runs using btree (start_time) TABLESPACE pg_default;
 
 create index IF not exists agent_runs_status_idx on public.agent_runs using btree (status) TABLESPACE pg_default;
+
+create index IF not exists agent_runs_parent_run_idx on public.agent_runs using btree (parent_run_id) where parent_run_id is not null TABLESPACE pg_default;
+
+create index IF not exists agent_runs_trigger_idx on public.agent_runs using btree (trigger_type, trigger_id) where trigger_id is not null TABLESPACE pg_default;
 
 create table public.spans (
   run_id uuid not null,
