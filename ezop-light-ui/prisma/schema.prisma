@@ -117,8 +117,6 @@ model AgentRun {
   @@index([start_time])
   @@index([status])
   @@index([version_id])
-  @@index([parent_run_id], map: "agent_runs_parent_run_idx")
-  @@index([trigger_type, trigger_id], map: "agent_runs_trigger_idx")
   @@map("agent_runs")
 }
 
