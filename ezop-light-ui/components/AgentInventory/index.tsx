@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import type { Agent, AgentRun, RunEvent } from "@/app/dashboard/agents/actions"
-import { listRunEvents } from "@/app/dashboard/agents/actions"
+import type { Agent, AgentRun, RunEvent, SpawnedRun } from "@/app/dashboard/agents/actions"
+import { listRunEvents, listSpawnedRuns } from "@/app/dashboard/agents/actions"
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -35,6 +35,57 @@ const RUN_STATUS_COLOR: Record<AgentRun["status"], string> = {
   partial:   "#F59E0B",
   running:   "#06B6D4",
   cancelled: "#6B7280",
+}
+
+const TRIGGER_COLOR: Record<string, string> = {
+  api:     "bg-gray-100 text-gray-700",
+  user:    "bg-blue-100 text-blue-700",
+  cron:    "bg-purple-100 text-purple-700",
+  webhook: "bg-orange-100 text-orange-700",
+  agent:   "bg-teal-100 text-teal-700",
+}
+
+const TRIGGER_BG: Record<string, string> = {
+  api:     "#F3F4F6",
+  user:    "#DBEAFE",
+  cron:    "#EDE9FE",
+  webhook: "#FFEDD5",
+  agent:   "#CCFBF1",
+}
+
+const TRIGGER_TEXT: Record<string, string> = {
+  api:     "#374151",
+  user:    "#1D4ED8",
+  cron:    "#6D28D9",
+  webhook: "#C2410C",
+  agent:   "#0F766E",
+}
+
+function TriggerBadge({ triggerType, triggerId, parentRunId }: {
+  triggerType: string
+  triggerId: string | null
+  parentRunId: string | null
+}) {
+  const bg   = TRIGGER_BG[triggerType]   ?? "#F3F4F6"
+  const text = TRIGGER_TEXT[triggerType] ?? "#374151"
+  const label = triggerType === "agent"
+    ? "Agent↑"
+    : triggerType.charAt(0).toUpperCase() + triggerType.slice(1)
+
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 500,
+      background: bg, color: text,
+    }}>
+      {label}
+      {triggerId && triggerType !== "agent" && (
+        <span style={{ opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 80, whiteSpace: "nowrap" }}>
+          {triggerId}
+        </span>
+      )}
+    </span>
+  )
 }
 
 
@@ -187,6 +238,63 @@ function SpanTree({ events }: { events: RunEvent[] }) {
   )
 }
 
+function RunDetail({ run, events, isLoading }: { run: AgentRun; events: RunEvent[]; isLoading: boolean }) {
+  const [spawnedRuns, setSpawnedRuns] = useState<SpawnedRun[] | null>(null)
+  const [spawnedOpen, setSpawnedOpen] = useState(false)
+
+  async function loadSpawned() {
+    if (spawnedRuns !== null) return
+    const runs = await listSpawnedRuns(run.id)
+    setSpawnedRuns(runs)
+  }
+
+  return (
+    <div style={{ padding: "0.75rem 0.5rem", borderBottom: "1px solid var(--card-border)", background: "var(--sidebar-active-bg)" }}>
+      {/* Triggered by */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#4B5563", marginBottom: "0.5rem" }}>
+        <span style={{ fontWeight: 500 }}>Triggered by:</span>
+        <TriggerBadge triggerType={run.triggerType} triggerId={run.triggerId} parentRunId={run.parentRunId} />
+        {run.triggerType === "agent" && run.parentRunId && (
+          <span style={{ fontSize: 11, color: "#9CA3AF" }}>Run {run.parentRunId.slice(0, 8)}</span>
+        )}
+      </div>
+
+      {/* Spawned runs */}
+      {run.spawnedRunCount > 0 && (
+        <div style={{ marginBottom: "0.5rem" }}>
+          <button
+            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 500, color: "#374151", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            onClick={() => { setSpawnedOpen(o => !o); loadSpawned() }}
+          >
+            <span>{spawnedOpen ? "▾" : "▸"}</span>
+            Spawned runs ({run.spawnedRunCount})
+          </button>
+          {spawnedOpen && spawnedRuns === null && (
+            <p style={{ marginTop: 4, fontSize: 11, color: "#9CA3AF" }}>Loading…</p>
+          )}
+          {spawnedOpen && spawnedRuns !== null && (
+            <ul style={{ marginTop: 4, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+              {spawnedRuns.map(sr => (
+                <li key={sr.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "#4B5563" }}>
+                  <span style={{ fontFamily: "monospace" }}>{sr.id.slice(0, 8)}</span>
+                  <span>{sr.status}</span>
+                  <span>{sr.durationS !== null ? `${sr.durationS.toFixed(1)}s` : "—"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Events tree */}
+      {isLoading
+        ? <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, padding: "1rem 0" }}>Loading events…</div>
+        : <SpanTree events={events} />
+      }
+    </div>
+  )
+}
+
 function RunsTab({ agent }: { agent: Agent }) {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [runEvents, setRunEvents] = useState<Record<string, RunEvent[]>>({})
@@ -207,8 +315,8 @@ function RunsTab({ agent }: { agent: Agent }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 60px 16px", gap: "0.5rem", fontSize: 10, color: "var(--text-muted)", paddingBottom: 6, borderBottom: "1px solid var(--card-border)" }}>
-        {["Run ID", "Status", "Duration", ""].map(h => <div key={h}>{h}</div>)}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px 16px", gap: "0.5rem", fontSize: 10, color: "var(--text-muted)", paddingBottom: 6, borderBottom: "1px solid var(--card-border)" }}>
+        {["Run ID", "Trigger", "Status", "Duration", ""].map(h => <div key={h}>{h}</div>)}
       </div>
       {agent.recentRuns.map(run => {
         const isExpanded = expandedRunId === run.id
@@ -218,24 +326,24 @@ function RunsTab({ agent }: { agent: Agent }) {
             <div
               onClick={() => handleRunClick(run.id)}
               style={{
-                display: "grid", gridTemplateColumns: "1fr 70px 60px 16px",
+                display: "grid", gridTemplateColumns: "1fr 80px 70px 60px 16px",
                 gap: "0.5rem", padding: "0.6rem 0", borderBottom: "1px solid var(--card-border)",
                 alignItems: "center", fontSize: 12, cursor: "pointer",
                 background: isExpanded ? "var(--sidebar-active-bg)" : "transparent",
               }}
             >
               <div style={{ fontFamily: "monospace", color: "var(--text-muted)", fontSize: 11 }}>{run.id.slice(0, 8)}</div>
+              <div><TriggerBadge triggerType={run.triggerType} triggerId={run.triggerId} parentRunId={run.parentRunId} /></div>
               <span style={{ display: "inline-block", padding: "2px 6px", borderRadius: 99, fontSize: 10, fontWeight: 500, background: RUN_STATUS_COLOR[run.status] + "22", color: RUN_STATUS_COLOR[run.status] }}>{run.status}</span>
               <div style={{ color: "var(--text-muted)" }}>{run.durationS}s</div>
               <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{isExpanded ? "▲" : "▼"}</div>
             </div>
             {isExpanded && (
-              <div style={{ padding: "0.75rem 0.5rem", borderBottom: "1px solid var(--card-border)", background: "var(--sidebar-active-bg)" }}>
-                {isLoading
-                  ? <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, padding: "1rem 0" }}>Loading events…</div>
-                  : <SpanTree events={runEvents[run.id] ?? []} />
-                }
-              </div>
+              <RunDetail
+                run={run}
+                events={runEvents[run.id] ?? []}
+                isLoading={isLoading}
+              />
             )}
           </div>
         )
