@@ -14,6 +14,10 @@ export type AgentRun = {
   status: "success" | "failed" | "partial" | "running" | "cancelled";
   startTime: string;
   durationS: number;
+  triggerType: string;
+  triggerId: string | null;
+  parentRunId: string | null;
+  spawnedRunCount: number;
 };
 
 export type Agent = {
@@ -114,6 +118,10 @@ export async function listAgents(): Promise<Agent[]> {
         status: true,
         start_time: true,
         end_time: true,
+        trigger_type: true,
+        trigger_id: true,
+        parent_run_id: true,
+        _count: { select: { spawned_runs: true } },
       },
     }),
   ]);
@@ -155,6 +163,10 @@ export async function listAgents(): Promise<Agent[]> {
           status: r.status as AgentRun["status"],
           startTime: r.start_time.toISOString(),
           durationS,
+          triggerType: r.trigger_type,
+          triggerId: r.trigger_id,
+          parentRunId: r.parent_run_id,
+          spawnedRunCount: r._count.spawned_runs,
         };
       });
 
@@ -176,6 +188,38 @@ export async function listAgents(): Promise<Agent[]> {
         createdAt: v.created_at.toISOString(),
       })),
       recentRuns,
+    };
+  });
+}
+
+export type SpawnedRun = {
+  id: string;
+  status: string;
+  startTime: string;
+  durationS: number | null;
+};
+
+export async function listSpawnedRuns(parentRunId: string): Promise<SpawnedRun[]> {
+  const runs = await prisma.agentRun.findMany({
+    where: { parent_run_id: parentRunId },
+    select: {
+      id: true,
+      status: true,
+      start_time: true,
+      end_time: true,
+    },
+    orderBy: { start_time: "asc" },
+  });
+
+  return runs.map((run: (typeof runs)[0]) => {
+    const start = run.start_time.getTime();
+    const end = run.end_time ? run.end_time.getTime() : null;
+    const durationS = end !== null ? Math.max(0, Math.round((end - start) / 1000)) : null;
+    return {
+      id: run.id,
+      status: run.status,
+      startTime: run.start_time.toISOString(),
+      durationS,
     };
   });
 }
