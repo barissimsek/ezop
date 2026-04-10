@@ -606,3 +606,39 @@ class TestAgentInitTrigger:
         call_kwargs = mock_run.call_args.kwargs
         assert call_kwargs.get("trigger_type") is None
         assert call_kwargs.get("parent_run_id") is None
+
+    def test_explicit_trigger_type_forwarded_without_parent(self):
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
+        ):
+            Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+                trigger_type="user",
+                trigger_id="u-42",
+            )
+
+        call_kwargs = mock_run.call_args.kwargs
+        assert call_kwargs["trigger_type"] == "user"
+        assert call_kwargs["trigger_id"] == "u-42"
+        assert call_kwargs.get("parent_run_id") is None
+
+    def test_conflict_parent_run_id_with_non_agent_trigger_raises(self):
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP),
+        ):
+            with pytest.raises(ValueError, match="trigger_type must be 'agent'"):
+                Agent.init(
+                    name="support-bot",
+                    owner="growth-team",
+                    version="v0.3",
+                    runtime="langchain",
+                    trigger_type="cron",
+                    parent_run_id="aaaaaaaa-0000-0000-0000-000000000001",
+                )

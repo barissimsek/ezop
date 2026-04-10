@@ -163,11 +163,18 @@ class Agent:
 
         agent = cls(model, agent_version)
 
+        if parent_run_id is not None:
+            if trigger_type is not None and trigger_type != "agent":
+                raise ValueError(
+                    f"trigger_type must be 'agent' when parent_run_id is set, got {trigger_type!r}"
+                )
+            trigger_type = "agent"
+
         logger.info("Starting run for agent id=%s version_id=%s", model.id, agent_version.id)
         run_data = client.start_run(
             model.id,
             agent_version.id,
-            trigger_type="agent" if parent_run_id else trigger_type,
+            trigger_type=trigger_type,
             trigger_id=trigger_id,
             parent_run_id=parent_run_id,
         )["data"]
