@@ -35,6 +35,8 @@ RUN_RESP = {
     "data": {
         "id": "run-uuid-789",
         "status": "running",
+        "parent_run_id": None,
+        "root_run_id": None,
     },
 }
 
@@ -141,7 +143,24 @@ class TestAgentInit:
             patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
         ):
             Agent.init(name="support-bot", owner="growth-team", version="v0.3", runtime="langchain")
-            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456")
+            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456", parent_run_id=None)
+
+    def test_calls_start_run_with_parent_run_id(self):
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
+        ):
+            Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+                parent_run_id="parent-run-uuid",
+            )
+            mock_run.assert_called_once_with(
+                "agent-uuid-123", "version-uuid-456", parent_run_id="parent-run-uuid"
+            )
 
     def test_optional_fields_default_to_empty(self):
         agent_resp = {**AGENT_RESP, "data": {**AGENT_RESP["data"], "default_permissions": None}}

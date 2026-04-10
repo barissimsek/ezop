@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from .client import EzopClient
-from .models import AgentModel, AgentRun, AgentVersion, Event
+from .models import AgentModel, AgentRun, AgentVersion, AgentContext, Event
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ class Agent:
         default_permissions: Optional[list[str]] = None,
         permissions: Optional[list[str]] = None,
         changelog: Optional[str] = None,
+        parent_run_id: Optional[str] = None,
     ) -> "Agent":
         """
         Initialize an Ezop agent and register it with the Ezop platform.
@@ -161,12 +162,14 @@ class Agent:
         agent = cls(model, agent_version)
 
         logger.info("Starting run for agent id=%s version_id=%s", model.id, agent_version.id)
-        run_data = client.start_run(model.id, agent_version.id)["data"]
+        run_data = client.start_run(model.id, agent_version.id, parent_run_id=parent_run_id)["data"]
         agent.current_run = AgentRun(
             id=run_data["id"],
             agent_id=model.id,
             version_id=agent_version.id,
             status=run_data.get("status", "running"),
+            parent_run_id=run_data.get("parent_run_id"),
+            root_run_id=run_data.get("root_run_id"),
         )
         logger.info(
             "Agent initialized id=%s version_id=%s run_id=%s",
