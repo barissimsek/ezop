@@ -1,16 +1,17 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth import verify_api_key
 from app.clients.db import get_db
 from app.gatekeeper import assert_agents_limit
-from app.models.agents import Agent, AgentRun, AgentVersion
+from app.models.agents import Agent, AgentRun, AgentVersion, TriggerType
 from app.models.common import ApiResponse
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,21 @@ class StartRunRequest(BaseModel):
     version_id: str | None = None
     user_id: str | None = None
     metadata: dict | None = None
+    trigger_type: TriggerType = TriggerType.api
+    trigger_id: Optional[str] = None
+    parent_run_id: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def validate_trigger(self) -> "StartRunRequest":
+        if self.trigger_type == TriggerType.agent:
+            if self.parent_run_id is None:
+                raise ValueError("parent_run_id required when trigger_type is 'agent'")
+            if self.trigger_id is not None:
+                raise ValueError("trigger_id must be None when trigger_type is 'agent'")
+        else:
+            if self.parent_run_id is not None:
+                raise ValueError("parent_run_id only valid when trigger_type is 'agent'")
+        return self
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -214,11 +230,32 @@ def start_run(
     _assert_agent_org(db, agent_id, org_id)
     logger.info("Starting run agent_id=%s version_id=%s", agent_id, payload.version_id)
 
+    if payload.trigger_type == TriggerType.agent:
+        parent_row = (
+            db.execute(
+                text("SELECT organization_id FROM agent_runs WHERE id = :parent_run_id"),
+                {"parent_run_id": str(payload.parent_run_id)},
+            )
+            .mappings()
+            .first()
+        )
+        if parent_row is None or parent_row["organization_id"] != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="parent_run_id not found in this organization",
+            )
+
     row = (
         db.execute(
             text("""
-            INSERT INTO agent_runs (agent_id, version_id, user_id, status, metadata, organization_id)
-            VALUES (:agent_id, :version_id, :user_id, 'running', :metadata, :org_id)
+            INSERT INTO agent_runs (
+                agent_id, version_id, user_id, status, metadata, organization_id,
+                trigger_type, trigger_id, parent_run_id
+            )
+            VALUES (
+                :agent_id, :version_id, :user_id, 'running', :metadata, :org_id,
+                :trigger_type, :trigger_id, :parent_run_id
+            )
             RETURNING *
         """),
             {
@@ -227,6 +264,9 @@ def start_run(
                 "user_id": payload.user_id,
                 "metadata": payload.metadata,
                 "org_id": org_id,
+                "trigger_type": payload.trigger_type.value,
+                "trigger_id": payload.trigger_id,
+                "parent_run_id": str(payload.parent_run_id) if payload.parent_run_id else None,
             },
         )
         .mappings()

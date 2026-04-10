@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from tests.conftest import AGENT_ID, ORG_ID, RUN_ID, VERSION_ID, make_exec
 
+PARENT_RUN_ID = "cccccccc-0000-0000-0000-000000000001"
+
 AGENT_ROW = {
     "id": AGENT_ID,
     "name": "my-agent",
@@ -39,6 +41,9 @@ RUN_ROW = {
     "metadata": None,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
+    "trigger_type": "api",
+    "trigger_id": None,
+    "parent_run_id": None,
 }
 
 REGISTER_PAYLOAD = {
@@ -148,3 +153,79 @@ class TestStartRun:
         db.execute.return_value = make_exec(first=False)
         resp = client.post(f"/agents/{AGENT_ID}/runs", json={})
         assert resp.status_code == 404
+
+
+class TestStartRunTrigger:
+    def test_default_trigger_type_is_api(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping=RUN_ROW),
+        ]
+        resp = client.post(f"/agents/{AGENT_ID}/runs", json={})
+        assert resp.status_code == 201
+        assert resp.json()["data"]["trigger_type"] == "api"
+
+    def test_start_run_with_user_trigger(self, client, db):
+        row = {**RUN_ROW, "trigger_type": "user", "trigger_id": "user-abc"}
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping=row),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "user", "trigger_id": "user-abc"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["data"]["trigger_type"] == "user"
+        assert resp.json()["data"]["trigger_id"] == "user-abc"
+
+    def test_agent_trigger_requires_parent_run_id(self, client, db):
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "agent"},
+        )
+        assert resp.status_code == 422
+
+    def test_agent_trigger_forbids_trigger_id(self, client, db):
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={
+                "trigger_type": "agent",
+                "parent_run_id": PARENT_RUN_ID,
+                "trigger_id": "x",
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_non_agent_forbids_parent_run_id(self, client, db):
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "api", "parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 422
+
+    def test_agent_trigger_with_valid_parent(self, client, db):
+        row = {**RUN_ROW, "trigger_type": "agent", "parent_run_id": PARENT_RUN_ID}
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping={"organization_id": ORG_ID}),
+            make_exec(mapping=row),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "agent", "parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["data"]["trigger_type"] == "agent"
+
+    def test_agent_trigger_cross_org_parent_returns_422(self, client, db):
+        other_org = "ffffffff-0000-0000-0000-000000000001"
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping={"organization_id": other_org}),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "agent", "parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 422
