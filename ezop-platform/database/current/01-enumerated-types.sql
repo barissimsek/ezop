@@ -37,3 +37,12 @@ CREATE TYPE public.event_subtype AS ENUM (
   'http', 'database', 'filesystem', 'api',
   'timeout', 'rate_limit', 'validation', 'tool_error', 'llm_error'
 );
+
+CREATE TYPE public.trigger_type_t AS ENUM (
+    'unknown',
+    'api',
+    'agent',
+    'user',
+    'cron',
+    'webhook'
+);
