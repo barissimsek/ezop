@@ -4,14 +4,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth import verify_api_key
 from app.clients.db import get_db
 from app.gatekeeper import assert_agents_limit
-from app.models.agents import Agent, AgentRun, AgentVersion
+from app.models.agents import Agent, AgentRun, AgentVersion, TriggerType
 from app.models.common import ApiResponse
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,16 @@ class StartRunRequest(BaseModel):
     user_id: str | None = None
     metadata: dict | None = None
     parent_run_id: str | None = None
+    trigger_type: TriggerType = TriggerType.unknown
+    trigger_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_trigger(self) -> "StartRunRequest":
+        if self.trigger_type == TriggerType.agent and self.parent_run_id is None:
+            raise ValueError("parent_run_id required when trigger_type is 'agent'")
+        if self.trigger_type != TriggerType.agent and self.parent_run_id is not None:
+            raise ValueError("parent_run_id only valid when trigger_type is 'agent'")
+        return self
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -241,9 +251,9 @@ def start_run(
         db.execute(
             text("""
                 INSERT INTO agent_runs
-                    (id, agent_id, version_id, user_id, parent_run_id, root_run_id, status, metadata, organization_id)
+                    (id, agent_id, version_id, user_id, parent_run_id, root_run_id, status, metadata, organization_id, trigger_type, trigger_id)
                 VALUES
-                    (:id, :agent_id, :version_id, :user_id, :parent_run_id, :root_run_id, 'running', :metadata, :org_id)
+                    (:id, :agent_id, :version_id, :user_id, :parent_run_id, :root_run_id, 'running', :metadata, :org_id, :trigger_type, :trigger_id)
                 RETURNING *
             """),
             {
@@ -255,6 +265,8 @@ def start_run(
                 "root_run_id": root_run_id,
                 "metadata": payload.metadata,
                 "org_id": org_id,
+                "trigger_type": payload.trigger_type.value,
+                "trigger_id": payload.trigger_id,
             },
         )
         .mappings()

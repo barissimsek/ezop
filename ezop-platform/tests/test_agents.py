@@ -42,6 +42,8 @@ RUN_ROW = {
     "metadata": None,
     "parent_run_id": None,
     "root_run_id": RUN_ID,
+    "trigger_type": "unknown",
+    "trigger_id": None,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
 }
@@ -59,6 +61,8 @@ PARENT_RUN_ROW = {
     "metadata": None,
     "parent_run_id": None,
     "root_run_id": ROOT_RUN_ID,
+    "trigger_type": "unknown",
+    "trigger_id": None,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
 }
@@ -76,6 +80,8 @@ CHILD_RUN_ROW = {
     "metadata": None,
     "parent_run_id": PARENT_RUN_ID,
     "root_run_id": ROOT_RUN_ID,
+    "trigger_type": "unknown",
+    "trigger_id": None,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
 }
@@ -197,7 +203,7 @@ class TestStartRun:
         ]
         resp = client.post(
             f"/agents/{AGENT_ID}/runs",
-            json={"parent_run_id": PARENT_RUN_ID},
+            json={"parent_run_id": PARENT_RUN_ID, "trigger_type": "agent"},
         )
         assert resp.status_code == 201
         data = resp.json()["data"]
@@ -211,7 +217,7 @@ class TestStartRun:
         ]
         resp = client.post(
             f"/agents/{AGENT_ID}/runs",
-            json={"parent_run_id": PARENT_RUN_ID},
+            json={"parent_run_id": PARENT_RUN_ID, "trigger_type": "agent"},
         )
         assert resp.status_code == 404
         assert "Parent run not found" in resp.json()["error"]["message"]
@@ -224,7 +230,7 @@ class TestStartRun:
         ]
         resp = client.post(
             f"/agents/{AGENT_ID}/runs",
-            json={"parent_run_id": PARENT_RUN_ID},
+            json={"parent_run_id": PARENT_RUN_ID, "trigger_type": "agent"},
         )
         assert resp.status_code == 422
         assert "different organization" in resp.json()["error"]["message"]
@@ -241,3 +247,46 @@ class TestAgentRunModel:
         data = resp.json()["data"]
         assert data["parent_run_id"] is None
         assert data["root_run_id"] == RUN_ID
+
+
+class TestStartRunTrigger:
+    def test_start_run_with_cron_trigger(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping={**RUN_ROW, "trigger_type": "cron", "trigger_id": "daily-cleanup"}),
+        ]
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "cron", "trigger_id": "daily-cleanup"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()["data"]
+        assert data["trigger_type"] == "cron"
+        assert data["trigger_id"] == "daily-cleanup"
+
+    def test_start_run_default_trigger_unknown(self, client, db):
+        db.execute.side_effect = [
+            make_exec(first=True),
+            make_exec(mapping=RUN_ROW),
+        ]
+        resp = client.post(f"/agents/{AGENT_ID}/runs", json={})
+        assert resp.status_code == 201
+        assert resp.json()["data"]["trigger_type"] == "unknown"
+
+    def test_agent_trigger_requires_parent_run_id(self, client, db):
+        db.execute.return_value = make_exec(first=True)
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "agent"},
+        )
+        assert resp.status_code == 422
+        assert "parent_run_id required" in resp.json()["error"]["message"]
+
+    def test_non_agent_trigger_rejects_parent_run_id(self, client, db):
+        db.execute.return_value = make_exec(first=True)
+        resp = client.post(
+            f"/agents/{AGENT_ID}/runs",
+            json={"trigger_type": "user", "parent_run_id": PARENT_RUN_ID},
+        )
+        assert resp.status_code == 422
+        assert "parent_run_id only valid" in resp.json()["error"]["message"]

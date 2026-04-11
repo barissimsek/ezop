@@ -11,6 +11,15 @@ class RunStatus(StrEnum):
     failed = "failed"
 
 
+class TriggerType(StrEnum):
+    unknown = "unknown"
+    api     = "api"
+    agent   = "agent"
+    user    = "user"
+    cron    = "cron"
+    webhook = "webhook"
+
+
 class Agent(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,6 +58,8 @@ class AgentRun(BaseModel):
     message: str | None
     parent_run_id: UUID | None
     root_run_id: UUID
+    trigger_type: TriggerType
+    trigger_id: str | None
     organization_id: UUID
     start_time: datetime
     end_time: datetime | None
