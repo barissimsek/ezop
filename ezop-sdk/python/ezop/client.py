@@ -54,6 +54,8 @@ class EzopClient:
         user_id: Optional[str] = None,
         metadata: Optional[dict] = None,
         parent_run_id: Optional[str] = None,
+        trigger_type: Optional[str] = None,
+        trigger_id: Optional[str] = None,
     ) -> dict:
         logger.info("Starting run agent_id=%s version_id=%s", agent_id, version_id)
         body: dict = {}
@@ -65,6 +67,10 @@ class EzopClient:
             body["metadata"] = metadata
         if parent_run_id is not None:
             body["parent_run_id"] = parent_run_id
+        if trigger_type is not None:
+            body["trigger_type"] = trigger_type
+        if trigger_id is not None:
+            body["trigger_id"] = trigger_id
         result = self._post(f"/agents/{agent_id}/runs", body)
         logger.info("Run started id=%s", result.get("data", {}).get("id"))
         return result
