@@ -25,6 +25,42 @@ See [starter.py](starter.py) for a complete working example.
 from ezop import Agent
 ```
 
+### Multi-agent workflows
+
+Use `agent.get_context()` in the parent to expose its run ID, then pass it to the child however your architecture requires (environment variable, HTTP header, message queue payload, etc.).
+
+```python
+# ── Parent agent ──────────────────────────────────────────────────────────────
+parent = Agent.init(
+    name="orchestrator",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    trigger_type="api",
+    trigger_id="/api/v1/pipeline",
+)
+
+ctx = parent.get_context()
+# ctx.name    → "orchestrator"
+# ctx.run_id  → the active run ID
+
+# ── Child agent (separate process or service) ─────────────────────────────────
+child = Agent.init(
+    name="researcher",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    trigger_type="agent",
+    trigger_id=ctx.run_id,
+    parent_run_id=ctx.run_id,
+)
+
+child.close(status="success")
+parent.close(status="success")
+```
+
+All runs in a chain share the same `root_run_id`, assigned automatically by the platform. Access it after init via `agent.current_run.root_run_id`.
+
 ## API Reference
 
 ### `Agent.init()`
@@ -64,6 +100,22 @@ agent.close(
 | `status` | `str` | Yes | Final status of the run. One of `"success"`, `"failed"`, `"partial"`, `"canceled"`, `"running"`. |
 | `message` | `str` | No | Human-readable message describing the outcome, e.g. a failure reason. |
 | `metadata` | `dict` | No | Any arbitrary JSON-serialisable data you want to attach to the run (e.g. user context, request identifiers, feature flags). |
+
+---
+
+### `Agent.get_context()`
+
+Returns an `AgentContext` snapshot of the current run for passing to child agents.
+
+```python
+ctx = agent.get_context()
+# ctx.name    → agent name (str)
+# ctx.run_id  → active run ID (str)
+```
+
+Raises `RuntimeError` if called with no active run or after `close()`.
+
+The returned object is immutable. Pass `ctx.run_id` to child agents via whatever transport your architecture uses (env var, HTTP header, message body, etc.). In the child, provide it as `parent_run_id`.
 
 ---
 

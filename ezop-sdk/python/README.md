@@ -57,6 +57,46 @@ agent.close(
 )
 ```
 
+### Multi-agent workflows
+
+Ezop tracks parent/child relationships between runs. Use `agent.get_context()` in the parent to expose its run ID, then pass it to the child however your architecture requires (environment variable, HTTP header, message queue payload, etc.).
+
+```python
+# ── Parent agent (e.g. orchestrator) ─────────────────────────────────────────
+parent = Agent.init(
+    name="orchestrator",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    trigger_type="api",
+    trigger_id="/api/v1/pipeline",
+)
+
+ctx = parent.get_context()
+# ctx.name    → "orchestrator"
+# ctx.run_id  → the active run ID
+
+# Pass ctx.run_id to the child however you want:
+#   os.environ["PARENT_RUN_ID"] = ctx.run_id
+#   call child service with {"parent_run_id": ctx.run_id}
+
+# ── Child agent (separate process or service) ─────────────────────────────────
+child = Agent.init(
+    name="researcher",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    trigger_type="agent",
+    trigger_id=ctx.run_id,    # ID of the run that triggered this one
+    parent_run_id=ctx.run_id, # links this run into the hierarchy tree
+)
+
+child.close(status="success")
+parent.close(status="success")
+```
+
+Ezop denormalizes a `root_run_id` on every run so the full invocation tree can be queried in a single lookup. For a chain A → B → C, all three runs share the same `root_run_id`. You can access it after init via `agent.current_run.root_run_id`.
+
 ### Track trigger origin
 
 Pass `trigger_type` (and optionally `trigger_id`) to `Agent.init()` so every run records what triggered it:
@@ -172,6 +212,22 @@ agent.close(
 | `status` | `str` | Yes | Final status of the run. One of `"success"`, `"failed"`, `"partial"`, `"canceled"`, `"running"`. |
 | `message` | `str` | No | Human-readable message describing the outcome, e.g. a failure reason. |
 | `metadata` | `dict` | No | Any arbitrary JSON-serialisable data you want to attach to the run (e.g. user context, request identifiers, feature flags). |
+
+---
+
+### `agent.get_context()`
+
+Returns an `AgentContext` snapshot of the current run for passing to child agents.
+
+```python
+ctx = agent.get_context()
+# ctx.name    → agent name (str)
+# ctx.run_id  → active run ID (str)
+```
+
+Raises `RuntimeError` if called with no active run or after `close()`.
+
+The returned object is immutable. Pass `ctx.run_id` to child agents via whatever transport your architecture uses (env var, HTTP header, message body, etc.). In the child, provide it as `parent_run_id`.
 
 ---
 
