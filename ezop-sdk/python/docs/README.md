@@ -41,6 +41,9 @@ Registers the agent and its version with the Ezop platform, starts a run, and re
 | `default_permissions` | `list[str]` | No | Permissions granted to all versions of this agent by default. |
 | `permissions` | `list[str]` | No | Permissions granted to this specific version. |
 | `changelog` | `str` | No | Description of what changed in this version. |
+| `trigger_type` | `str` | No | What triggered this run. One of `"api"`, `"agent"`, `"user"`, `"cron"`, `"webhook"`, `"unknown"` (default). |
+| `trigger_id` | `str` | No | Identifier of the trigger source (e.g. API path, user ID, cron job name, webhook source). |
+| `parent_run_id` | `str` | No | Run ID of the parent agent. Required when `trigger_type="agent"`. |
 
 ---
 

@@ -16,6 +16,8 @@ agent = Agent.init(
     owner="my-team",
     version="v1.0",
     runtime="python",
+    trigger_type="api",
+    trigger_id="/api/v1/chat",
 )
 
 try:

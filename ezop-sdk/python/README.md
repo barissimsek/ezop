@@ -57,6 +57,39 @@ agent.close(
 )
 ```
 
+### Track trigger origin
+
+Pass `trigger_type` (and optionally `trigger_id`) to `Agent.init()` so every run records what triggered it:
+
+```python
+# API request
+agent = Agent.init(..., trigger_type="api", trigger_id="/api/v1/chat")
+
+# Scheduled job
+agent = Agent.init(..., trigger_type="cron", trigger_id="nightly-digest")
+
+# Webhook (e.g. from GitHub or Stripe)
+agent = Agent.init(..., trigger_type="webhook", trigger_id="github")
+
+# User-initiated
+agent = Agent.init(..., trigger_type="user", trigger_id=user_id)
+
+# Child agent triggered by a parent agent
+ctx = parent_agent.get_context()
+child = Agent.init(..., trigger_type="agent", trigger_id=ctx.run_id, parent_run_id=ctx.run_id)
+```
+
+`trigger_id` meaning depends on `trigger_type`:
+
+| `trigger_type` | `trigger_id` |
+|---|---|
+| `api` | API endpoint path |
+| `agent` | Triggering agent's run ID |
+| `user` | User ID |
+| `cron` | Job name or schedule |
+| `webhook` | Webhook source (e.g. `"github"`, `"stripe"`) |
+| `unknown` | `None` |
+
 ### Track steps with spans and events
 
 Use `span` for steps with duration and `emit` for single points in time:
@@ -116,6 +149,9 @@ Registers the agent and its version with the Ezop platform, and returns an `Agen
 | `default_permissions` | `list[str]` | No | Permissions granted to all versions of this agent by default. |
 | `permissions` | `list[str]` | No | Permissions granted to this specific version. |
 | `changelog` | `str` | No | Description of what changed in this version. |
+| `trigger_type` | `str` | No | What triggered this run. One of `"api"`, `"agent"`, `"user"`, `"cron"`, `"webhook"`, `"unknown"` (default). |
+| `trigger_id` | `str` | No | Identifier of the trigger source (e.g. API path, user ID, cron job name, webhook source). |
+| `parent_run_id` | `str` | No | Run ID of the parent agent. Required when `trigger_type="agent"`. |
 
 ---
 
