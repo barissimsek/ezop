@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from ezop import Agent
-from ezop.models import Event
+from ezop.models import AgentContext, Event
 
 AGENT_RESP = {
     "success": True,
@@ -35,6 +35,8 @@ RUN_RESP = {
     "data": {
         "id": "run-uuid-789",
         "status": "running",
+        "parent_run_id": None,
+        "root_run_id": "run-uuid-789",
     },
 }
 
@@ -86,6 +88,32 @@ class TestAgentInit:
         assert agent.current_run.status == "running"
         assert agent.current_run.agent_id == "agent-uuid-123"
         assert agent.current_run.version_id == "version-uuid-456"
+
+    def test_run_has_parent_and_root_ids(self):
+        parent_resp = {
+            "success": True,
+            "error": None,
+            "data": {
+                "id": "run-uuid-789",
+                "status": "running",
+                "parent_run_id": "parent-run-uuid",
+                "root_run_id": "root-run-uuid",
+            },
+        }
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=parent_resp),
+        ):
+            agent = Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+                parent_run_id="parent-run-uuid",
+            )
+        assert agent.current_run.parent_run_id == "parent-run-uuid"
+        assert agent.current_run.root_run_id == "root-run-uuid"
 
     def test_calls_register_agent_with_correct_payload(self):
         with (
@@ -141,7 +169,22 @@ class TestAgentInit:
             patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
         ):
             Agent.init(name="support-bot", owner="growth-team", version="v0.3", runtime="langchain")
-            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456")
+            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456", parent_run_id=None)
+
+    def test_calls_start_run_with_parent_run_id(self):
+        with (
+            patch("ezop.client.EzopClient.register_agent", return_value=AGENT_RESP),
+            patch("ezop.client.EzopClient.create_version", return_value=VERSION_RESP),
+            patch("ezop.client.EzopClient.start_run", return_value=RUN_RESP) as mock_run,
+        ):
+            Agent.init(
+                name="support-bot",
+                owner="growth-team",
+                version="v0.3",
+                runtime="langchain",
+                parent_run_id="parent-run-uuid",
+            )
+            mock_run.assert_called_once_with("agent-uuid-123", "version-uuid-456", parent_run_id="parent-run-uuid")
 
     def test_optional_fields_default_to_empty(self):
         agent_resp = {**AGENT_RESP, "data": {**AGENT_RESP["data"], "default_permissions": None}}
@@ -561,3 +604,46 @@ class TestAgentSpan:
                 agent.emit(name="token.count", category="llm")
         body = mock_emit.call_args[0][1]
         assert body["span_id"] == s.span_id
+
+
+class TestAgentContext:
+    def test_has_name_and_run_id(self):
+        ctx = AgentContext(name="orchestrator", run_id="run-uuid-789")
+        assert ctx.name == "orchestrator"
+        assert ctx.run_id == "run-uuid-789"
+
+    def test_is_immutable(self):
+        ctx = AgentContext(name="orchestrator", run_id="run-uuid-789")
+        with pytest.raises(Exception):
+            ctx.name = "other"  # type: ignore[misc]
+
+
+class TestGetContext:
+    def test_returns_agent_context(self):
+        agent = make_agent()
+        ctx = agent.get_context()
+        assert isinstance(ctx, AgentContext)
+
+    def test_name_matches_agent_model(self):
+        agent = make_agent()
+        ctx = agent.get_context()
+        assert ctx.name == "support-bot"
+
+    def test_run_id_matches_active_run(self):
+        agent = make_agent()
+        ctx = agent.get_context()
+        assert ctx.run_id == "run-uuid-789"
+
+    def test_raises_when_no_active_run(self):
+        agent = make_agent()
+        agent.current_run = None
+        with pytest.raises(RuntimeError, match="No active run"):
+            agent.get_context()
+
+    def test_raises_after_close(self):
+        agent = make_agent()
+        end_resp = {"success": True, "error": None, "data": {"status": "success", "metadata": None}}
+        with patch("ezop.client.EzopClient.end_run", return_value=end_resp):
+            agent.close(status="success")
+        with pytest.raises(RuntimeError, match="closed"):
+            agent.get_context()
