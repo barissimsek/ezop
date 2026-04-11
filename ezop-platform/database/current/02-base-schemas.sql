@@ -116,6 +116,8 @@ create table public.agent_runs (
   message text null,
   parent_run_id uuid null,
   root_run_id uuid not null,
+  trigger_type public.trigger_type_t not null default 'unknown',
+  trigger_id text null,
   organization_id uuid not null,
   constraint agent_runs_pkey primary key (id),
   constraint agent_runs_agent_id_fkey foreign KEY (agent_id) references agents (id) on delete CASCADE,
@@ -134,6 +136,8 @@ create index IF not exists agent_runs_start_time_idx on public.agent_runs using 
 create index IF not exists agent_runs_status_idx on public.agent_runs using btree (status) TABLESPACE pg_default;
 
 create index IF not exists agent_runs_root_run_id_idx on public.agent_runs using btree (root_run_id) TABLESPACE pg_default;
+
+create index IF not exists agent_runs_trigger_type_idx on public.agent_runs using btree (trigger_type) TABLESPACE pg_default;
 
 create table public.spans (
   run_id uuid not null,

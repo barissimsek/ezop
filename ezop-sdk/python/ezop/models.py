@@ -40,6 +40,8 @@ class AgentRun:
     message: Optional[str] = None
     parent_run_id: Optional[str] = None
     root_run_id: Optional[str] = None
+    trigger_type: Optional[str] = None
+    trigger_id: Optional[str] = None
     _current_span_id: Optional[str] = field(default=None, repr=False, compare=False)
 
 

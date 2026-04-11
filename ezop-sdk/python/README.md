@@ -57,6 +57,79 @@ agent.close(
 )
 ```
 
+### Multi-agent workflows
+
+Ezop tracks parent/child relationships between runs. Use `agent.get_context()` in the parent to expose its run ID, then pass it to the child however your architecture requires (environment variable, HTTP header, message queue payload, etc.).
+
+```python
+# ── Parent agent (e.g. orchestrator) ─────────────────────────────────────────
+parent = Agent.init(
+    name="orchestrator",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    trigger_type="api",
+    trigger_id="/api/v1/pipeline",
+)
+
+ctx = parent.get_context()
+# ctx.name    → "orchestrator"
+# ctx.run_id  → the active run ID
+
+# Pass ctx.run_id to the child however you want:
+#   os.environ["PARENT_RUN_ID"] = ctx.run_id
+#   call child service with {"parent_run_id": ctx.run_id}
+
+# ── Child agent (separate process or service) ─────────────────────────────────
+child = Agent.init(
+    name="researcher",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    trigger_type="agent",
+    trigger_id=ctx.run_id,    # ID of the run that triggered this one
+    parent_run_id=ctx.run_id, # links this run into the hierarchy tree
+)
+
+child.close(status="success")
+parent.close(status="success")
+```
+
+Ezop denormalizes a `root_run_id` on every run so the full invocation tree can be queried in a single lookup. For a chain A → B → C, all three runs share the same `root_run_id`. You can access it after init via `agent.current_run.root_run_id`.
+
+### Track trigger origin
+
+Pass `trigger_type` (and optionally `trigger_id`) to `Agent.init()` so every run records what triggered it:
+
+```python
+# API request
+agent = Agent.init(..., trigger_type="api", trigger_id="/api/v1/chat")
+
+# Scheduled job
+agent = Agent.init(..., trigger_type="cron", trigger_id="nightly-digest")
+
+# Webhook (e.g. from GitHub or Stripe)
+agent = Agent.init(..., trigger_type="webhook", trigger_id="github")
+
+# User-initiated
+agent = Agent.init(..., trigger_type="user", trigger_id=user_id)
+
+# Child agent triggered by a parent agent
+ctx = parent_agent.get_context()
+child = Agent.init(..., trigger_type="agent", trigger_id=ctx.run_id, parent_run_id=ctx.run_id)
+```
+
+`trigger_id` meaning depends on `trigger_type`:
+
+| `trigger_type` | `trigger_id` |
+|---|---|
+| `api` | API endpoint path |
+| `agent` | Triggering agent's run ID |
+| `user` | User ID |
+| `cron` | Job name or schedule |
+| `webhook` | Webhook source (e.g. `"github"`, `"stripe"`) |
+| `unknown` | `None` |
+
 ### Track steps with spans and events
 
 Use `span` for steps with duration and `emit` for single points in time:
@@ -116,6 +189,9 @@ Registers the agent and its version with the Ezop platform, and returns an `Agen
 | `default_permissions` | `list[str]` | No | Permissions granted to all versions of this agent by default. |
 | `permissions` | `list[str]` | No | Permissions granted to this specific version. |
 | `changelog` | `str` | No | Description of what changed in this version. |
+| `trigger_type` | `str` | No | What triggered this run. One of `"api"`, `"agent"`, `"user"`, `"cron"`, `"webhook"`, `"unknown"` (default). |
+| `trigger_id` | `str` | No | Identifier of the trigger source (e.g. API path, user ID, cron job name, webhook source). |
+| `parent_run_id` | `str` | No | Run ID of the parent agent. Required when `trigger_type="agent"`. |
 
 ---
 
@@ -136,6 +212,22 @@ agent.close(
 | `status` | `str` | Yes | Final status of the run. One of `"success"`, `"failed"`, `"partial"`, `"canceled"`, `"running"`. |
 | `message` | `str` | No | Human-readable message describing the outcome, e.g. a failure reason. |
 | `metadata` | `dict` | No | Any arbitrary JSON-serialisable data you want to attach to the run (e.g. user context, request identifiers, feature flags). |
+
+---
+
+### `agent.get_context()`
+
+Returns an `AgentContext` snapshot of the current run for passing to child agents.
+
+```python
+ctx = agent.get_context()
+# ctx.name    → agent name (str)
+# ctx.run_id  → active run ID (str)
+```
+
+Raises `RuntimeError` if called with no active run or after `close()`.
+
+The returned object is immutable. Pass `ctx.run_id` to child agents via whatever transport your architecture uses (env var, HTTP header, message body, etc.). In the child, provide it as `parent_run_id`.
 
 ---
 

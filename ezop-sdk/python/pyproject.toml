@@ -1,6 +1,6 @@
 [project]
 name = "ezop"
-version = "0.0.22a0"
+version = "0.0.23a0"
 description = "Ezop SDK - The story of every AI agent"
 authors = [{ name = "Ezop, Inc", email = "support@ezop.ai" }]
 readme = "README.md"
