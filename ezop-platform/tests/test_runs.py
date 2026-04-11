@@ -17,6 +17,8 @@ RUN_ROW = {
     "metadata": None,
     "parent_run_id": None,
     "root_run_id": RUN_ID,
+    "trigger_type": "unknown",
+    "trigger_id": None,
     "created_at": "2024-01-01T00:00:00+00:00",
     "updated_at": "2024-01-01T00:00:00+00:00",
 }
