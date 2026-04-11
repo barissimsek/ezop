@@ -49,8 +49,9 @@ make test
 ## Responsible AI usage
 
 1. AI tools are welcome, but you are fully responsible for the code you submit. Make sure you understand every part of it.
-2. Significant changes must be accompanied by a design spec. You can use superpower::brainstorm or provide your own.
-3. Submitting AI-generated code without understanding it is not acceptable. If we see repeated cases of this, we may restrict your ability to open pull requests. Please respect reviewers’ time. Low-quality, unvetted code will not be reviewed.
+2. Set your code agent to "Ask before edit" mode and do not automatically approve changes. This will give you full control over your code and possibility to inspect the code.
+3. Significant changes must be accompanied by a design spec. You can use superpower::brainstorm or provide your own.
+4. Submitting AI-generated code without understanding it is not acceptable. If we see repeated cases of this, we may restrict your ability to open pull requests. Please respect reviewers’ time. Low-quality, unvetted code will not be reviewed.
 
 ## Reporting bugs
 
