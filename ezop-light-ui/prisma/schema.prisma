@@ -229,20 +229,6 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-model ServiceCost {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  service_type    String
-  service_name    String
-  unit_cost       Decimal   @default(0) @db.Decimal(18, 6)
-  unit_type       String
-  description     String?
-  pricing_details Json?
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@map("service_costs")
-}
-
 model Plan {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name       plan_t   @unique
