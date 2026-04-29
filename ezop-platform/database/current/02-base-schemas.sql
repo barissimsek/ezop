@@ -36,31 +36,6 @@ create table public.plans (
   constraint plans_pkey primary key (id)
 ) TABLESPACE pg_default;
 
-create table public.service_costs (
-  id uuid not null default gen_random_uuid (),
-  service_type text not null,
-  service_name text not null,
-  unit_cost numeric(18, 6) not null default 0,
-  unit_type text not null,
-  description text null,
-  pricing_details jsonb null,
-  created_at timestamp with time zone null default now(),
-  updated_at timestamp with time zone null default now(),
-  constraint service_costs_pkey primary key (id),
-  constraint service_costs_service_type_check check (
-    (
-      service_type = any (
-        array[
-          'llm'::text,
-          'api'::text,
-          'tool'::text,
-          'compute'::text
-        ]
-      )
-    )
-  )
-) TABLESPACE pg_default;
-
 create table public.agents (
   id uuid not null default gen_random_uuid (),
   name text not null,

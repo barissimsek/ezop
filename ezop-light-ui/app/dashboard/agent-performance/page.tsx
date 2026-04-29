@@ -49,7 +49,7 @@ export default async function AgentPerformancePage({
   const since = new Date(todayUTC)
   since.setUTCDate(todayUTC.getUTCDate() - (days - 1))
 
-  const [runsRaw, serviceCostsRaw, versionsRaw] = await Promise.all([
+  const [runsRaw, versionsRaw] = await Promise.all([
     orgId
       ? prisma.agentRun.findMany({
           where: {
@@ -60,10 +60,6 @@ export default async function AgentPerformancePage({
           select: { id: true, start_time: true, status: true, version_id: true, agent_id: true },
         })
       : Promise.resolve([]),
-    prisma.serviceCost.findMany({
-      where: { service_type: "llm" },
-      select: { service_name: true, unit_cost: true },
-    }),
     orgId
       ? prisma.agentVersion.findMany({
           where: {
@@ -92,18 +88,6 @@ export default async function AgentPerformancePage({
       })
     : []
 
-  // model → unit_cost per 1000 tokens
-  const costPerModel: Record<string, number> = {}
-  for (const row of serviceCostsRaw) {
-    costPerModel[row.service_name] = Number(row.unit_cost)
-  }
-
-  console.log("[cost-debug] DATABASE_URL:", process.env.DATABASE_URL)
-  console.log("[cost-debug] orgId:", orgId)
-  console.log("[cost-debug] llmEvents count:", llmEvents.length)
-  console.log("[cost-debug] costPerModel:", costPerModel)
-  console.log("[cost-debug] all events:", JSON.stringify(llmEvents, null, 2))
-
   const statusCounts = {
     running:  runs.filter(r => r.status === "running").length,
     success:  runs.filter(r => r.status === "success").length,
@@ -128,26 +112,21 @@ export default async function AgentPerformancePage({
     }
   })
 
-  // Cost chart
+  // Token usage chart
   const costData = Array.from({ length: days }, (_, i) => {
     const day = new Date(since)
     day.setUTCDate(since.getUTCDate() + i)
     const dayStr = day.toISOString().slice(0, 10)
-    const llmCost = llmEvents
-      .filter(e => e.timestamp?.toISOString().slice(0, 10) === dayStr)
-      .reduce((sum, e) => {
-        const meta = e.metadata as { model?: string; input_tokens?: number; output_tokens?: number; usage?: { input_tokens?: number; output_tokens?: number } } | null
-        if (!meta) return sum
-        const unitCost = costPerModel[meta.model ?? ""] ?? 0
-        const inputTokens = meta.input_tokens ?? meta.usage?.input_tokens ?? 0
-        const outputTokens = meta.output_tokens ?? meta.usage?.output_tokens ?? 0
-        const tokens = inputTokens + outputTokens
-        return sum + (tokens / 1000) * unitCost
-      }, 0)
-    return {
-      time: DAY_LABELS[day.getUTCDay()],
-      llmCost: Math.round(llmCost * 100000) / 100000,
+    const dayEvents = llmEvents.filter(e => e.timestamp?.toISOString().slice(0, 10) === dayStr)
+    let inputTokens = 0
+    let outputTokens = 0
+    for (const e of dayEvents) {
+      const meta = e.metadata as { input_tokens?: number; output_tokens?: number; usage?: { input_tokens?: number; output_tokens?: number } } | null
+      if (!meta) continue
+      inputTokens  += meta.input_tokens  ?? meta.usage?.input_tokens  ?? 0
+      outputTokens += meta.output_tokens ?? meta.usage?.output_tokens ?? 0
     }
+    return { time: DAY_LABELS[day.getUTCDay()], inputTokens, outputTokens }
   })
 
   // Prompt/version chart
@@ -202,7 +181,7 @@ export default async function AgentPerformancePage({
           <SuccessFailureChart counts={statusCounts} />
         </Card>
 
-        <Card title="Token & Cost Consumption" description="Which agent is lighting your credit card on fire">
+        <Card title="Token Consumption" description="Input and output token usage across all agents">
           <CostChart data={costData} />
         </Card>
 
