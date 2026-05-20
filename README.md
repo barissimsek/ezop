@@ -147,6 +147,7 @@ ctx = agent.get_context()
 with agent.span("llm.call", metadata={"model": "example-llm"}):
     response = llm.generate(prompt)
 
+request_id = "req_123"
 agent.emit(name="llm.response", category="llm", output={"text": response})
 agent.close(status="success", metadata={"request_id": request_id})
 ```
