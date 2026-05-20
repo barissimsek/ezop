@@ -129,12 +129,26 @@ export EZOP_API_KEY=your-api-key
 ```python
 from ezop import Agent
 
-agent = Agent.init(name="my-agent", owner="my-team", version="v1.0", runtime="python")
+agent = Agent.init(
+    name="my-agent",
+    owner="my-team",
+    version="v1.0",
+    runtime="python",
+    description="Answers support questions",
+    default_permissions=["read:docs"],
+    permissions=["read:docs", "call:llm"],
+    trigger_type="api",
+    trigger_id="/api/chat",
+)
 
-with agent.span("llm.call"):
+ctx = agent.get_context()
+# Pass ctx.run_id to child agents as parent_run_id when building multi-agent flows.
+
+with agent.span("llm.call", metadata={"model": "example-llm"}):
     response = llm.generate(prompt)
 
-agent.close(status="success")
+agent.emit(name="llm.response", category="llm", output={"text": response})
+agent.close(status="success", metadata={"request_id": request_id})
 ```
 
 See [ezop-sdk/python/README.md](ezop-sdk/python/README.md) for the full API reference.

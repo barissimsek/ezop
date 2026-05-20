@@ -198,7 +198,8 @@ class Agent:
         """Close the current run and record its outcome.
 
         Args:
-            status: Final status of the run (e.g. "success", "failed", "partial", "cancelled").
+            status: Final status of the run. Use "success" or "failed".
+            metadata: Optional JSON-serialisable data to store on the run.
             message: Optional human-readable message, e.g. a failure reason.
         """
         self._check_active()
