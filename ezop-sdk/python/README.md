@@ -209,7 +209,7 @@ agent.close(
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `status` | `str` | Yes | Final status of the run. One of `"success"`, `"failed"`, `"partial"`, `"canceled"`, `"running"`. |
+| `status` | `str` | Yes | Final status of the run. Use `"success"` or `"failed"`. The platform assigns `"running"` while the run is active. |
 | `message` | `str` | No | Human-readable message describing the outcome, e.g. a failure reason. |
 | `metadata` | `dict` | No | Any arbitrary JSON-serialisable data you want to attach to the run (e.g. user context, request identifiers, feature flags). |
 

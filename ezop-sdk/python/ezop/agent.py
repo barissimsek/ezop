@@ -192,14 +192,15 @@ class Agent:
     def close(
         self,
         status: str = "success",
-        metadata: Optional[dict] = None,
         message: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> AgentRun:
         """Close the current run and record its outcome.
 
         Args:
-            status: Final status of the run (e.g. "success", "failed", "partial", "cancelled").
+            status: Final status of the run. Use "success" or "failed".
             message: Optional human-readable message, e.g. a failure reason.
+            metadata: Optional JSON-serialisable data to store on the run.
         """
         self._check_active()
         if self.current_run is None:
