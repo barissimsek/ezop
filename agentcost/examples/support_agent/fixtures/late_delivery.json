@@ -1,0 +1,6 @@
+{
+ "input": {
+  "message": "My order 1044 still hasn't arrived and it's been two weeks. I want my money back."
+ },
+ "assert": "check_answer"
+}

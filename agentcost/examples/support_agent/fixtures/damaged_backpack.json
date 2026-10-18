@@ -1,0 +1,6 @@
+{
+ "input": {
+  "message": "Hi, my order 1042 arrived with a torn backpack strap. Can I get a refund?"
+ },
+ "assert": "check_answer"
+}

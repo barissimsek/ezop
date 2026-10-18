@@ -1,0 +1,27 @@
+[
+ {
+  "id": "KB-101",
+  "title": "Damaged on arrival",
+  "body": "If an item arrives damaged, the customer may choose a replacement or a full refund within 30 days of delivery. Photos help but are not required."
+ },
+ {
+  "id": "KB-102",
+  "title": "Wrong item shipped",
+  "body": "When we ship the wrong item we send a prepaid return label and ship the correct item immediately."
+ },
+ {
+  "id": "KB-103",
+  "title": "Late delivery",
+  "body": "Orders more than 5 days late qualify for a shipping refund. Orders still in transit cannot be refunded yet."
+ },
+ {
+  "id": "KB-104",
+  "title": "Changed my mind",
+  "body": "Unused items can be returned within 30 days for store credit or a refund minus a 10% restocking fee."
+ },
+ {
+  "id": "KB-105",
+  "title": "Warranty claims",
+  "body": "Gear failures within one year are covered by warranty; open a ticket so the warranty team can review."
+ }
+]

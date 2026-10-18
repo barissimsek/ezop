@@ -1,0 +1,79 @@
+name: agentcost
+description: Agent cost regression check. Explains which change in a pull request made your LLM agent cost more.
+author: Ezop
+branding:
+  icon: dollar-sign
+  color: green
+
+inputs:
+  config:
+    description: Path to agentcost.yml
+    default: agentcost.yml
+  mode:
+    description: "auto (pull_request -> pr, push -> baseline), pr, or baseline"
+    default: auto
+  out-dir:
+    description: Where reports, diff.json, and comment.md are written
+    default: .agentcost
+  github-token:
+    description: Token for baseline artifact lookup and the sticky PR comment
+    default: ${{ github.token }}
+  baseline-retention-days:
+    description: Retention for baseline artifacts uploaded from main
+    default: "30"
+  install:
+    description: pip requirement used to install agentcost (defaults to this action's source)
+    default: ""
+
+outputs:
+  verdict:
+    description: regression | inconclusive | ok | baseline | skipped | error
+    value: ${{ steps.check.outputs.verdict }}
+  exit-code:
+    description: 0 within budget or inconclusive, 1 significant regression, 2 config or run error
+    value: ${{ steps.check.outputs.code }}
+  comment-path:
+    description: Path to the rendered PR comment
+    value: ${{ steps.check.outputs.comment-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install agentcost
+      shell: bash
+      run: python -m pip install --quiet "${{ inputs.install || github.action_path }}"
+
+    - name: Run agentcost
+      id: check
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set +e
+        ezop-agentcost ci --config "${{ inputs.config }}" --mode "${{ inputs.mode }}" --out-dir "${{ inputs.out-dir }}"
+        code=$?
+        echo "code=$code" >> "$GITHUB_OUTPUT"
+        exit 0
+
+    - name: Upload baseline report
+      if: steps.check.outputs.verdict == 'baseline'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.check.outputs.artifact-name }}
+        path: ${{ steps.check.outputs.report-path }}
+        retention-days: ${{ inputs.baseline-retention-days }}
+        overwrite: true
+
+    - name: Upload PR reports
+      if: always() && steps.check.outputs.verdict != 'baseline' && steps.check.outputs.verdict != 'skipped'
+      uses: actions/upload-artifact@v4
+      with:
+        name: agentcost-pr-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          ${{ inputs.out-dir }}/*.json
+          ${{ inputs.out-dir }}/comment.md
+        if-no-files-found: ignore
+
+    - name: Set check result
+      shell: bash
+      run: exit ${{ steps.check.outputs.code }}

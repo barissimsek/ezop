@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ezop-platform/**'
+      - 'platform/ezop-platform/**'
       - '.github/workflows/platform.yml'
   pull_request:
     paths:
-      - 'ezop-platform/**'
+      - 'platform/ezop-platform/**'
       - '.github/workflows/platform.yml'
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ezop-platform
+        working-directory: platform/ezop-platform
 
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +27,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: |
-            ezop-platform/requirements.txt
-            ezop-platform/requirements-dev.txt
+            platform/ezop-platform/requirements.txt
+            platform/ezop-platform/requirements-dev.txt
 
       - name: Install dependencies
         run: |

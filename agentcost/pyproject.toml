@@ -1,0 +1,78 @@
+[project]
+name = "ezop-agentcost"
+version = "0.1.0"
+description = "Agent cost regression CI: tells you which change in a pull request made your LLM agent more expensive, and by how much."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Baris Simsek", email = "simsek@gmx.us" }]
+keywords = ["llm", "agents", "ci", "cost", "observability", "anthropic", "openai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "click>=8.1",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    "starlette>=0.37",
+    "tiktoken>=0.7",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "anthropic>=0.40",
+    "openai>=1.40",
+    "build",
+    "pyright",
+    "pytest>=8",
+    "ruff",
+    "twine",
+]
+
+[project.scripts]
+ezop-agentcost = "ezop_agentcost.cli:entrypoint"
+
+[project.urls]
+Homepage = "https://github.com/ezop-ai/ezop/tree/main/agentcost"
+Documentation = "https://github.com/ezop-ai/ezop/tree/main/agentcost/docs"
+Issues = "https://github.com/ezop-ai/ezop/issues"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ezop_agentcost = ["templates/*", "py.typed"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E741"]  # S, A, O mirror the cost-model symbols in the spec
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]  # dense JSON fixtures read better unwrapped
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["benchmark: seeded-regression benchmark against the offline mock model (slower)"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+include = ["src/ezop_agentcost"]
+venvPath = "."
+venv = ".venv"
