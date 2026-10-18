@@ -1,6 +1,6 @@
 [project]
 name = "ezop-agentcost"
-version = "0.1.1"
+version = "0.1.2"
 description = "Agent cost regression CI: tells you which change in a pull request made your LLM agent more expensive, and by how much."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -130,6 +130,7 @@ The full explanation is in [docs/how-it-works.md](https://github.com/ezop-ai/ezo
 - [How it works](https://github.com/ezop-ai/ezop/blob/main/agentcost/docs/how-it-works.md): the proxy, segments, cost model, attribution, statistics, and the limits of each
 - [Configuration reference](https://github.com/ezop-ai/ezop/blob/main/agentcost/docs/configuration.md): every `agentcost.yml` key
 - [GitHub Action](https://github.com/ezop-ai/ezop/blob/main/agentcost/docs/github-action.md): workflow setup, baselines, cost control, forks
+- [CI integrations](https://github.com/ezop-ai/ezop/tree/main/agentcost/ci): the action, example workflows, and running agentcost on any other CI
 - [Report format](https://github.com/ezop-ai/ezop/blob/main/agentcost/docs/report-format.md): `report.json` and `diff.json`
 - [Contributing](https://github.com/ezop-ai/ezop/blob/main/agentcost/docs/contributing.md): dev setup, tests, the seeded benchmark, adding a provider surface
 - [Reference agent](https://github.com/ezop-ai/ezop/blob/main/agentcost/examples/support_agent/README.md): the demo agent and its seeded regressions
