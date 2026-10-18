@@ -33,7 +33,7 @@ jobs:
         run: pip install -e .
 
       - name: Agent cost check
-        uses: ezop-ai/ezop/agentcost@main
+        uses: ezop-ai/ezop/agentcost/ci/github@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:

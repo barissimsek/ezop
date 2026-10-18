@@ -1,0 +1,188 @@
+# agentcost check as an in-repo Argo Workflow. Copy this file to .argo/agentcost.yaml in your agent repo.
+#
+# Your Argo CI setup submits it for each pull request with these parameters set from the PR:
+#   revision     PR head commit SHA (not a merge commit)        required
+#   repo-url     https clone URL of the repo                    required
+#   pr-number    PR number, to post the sticky comment          optional
+#   github-repo  owner/name, needed with pr-number              optional
+# By hand:  argo submit .argo/agentcost.yaml -p repo-url=https://github.com/my-org/my-agent.git \
+#             -p revision=$(git rev-parse HEAD)
+#
+#   check   (pod 1)  init container: git clone + checkout the PR head      ← GitHub token, no repo code runs
+#                    main container: install the agent, ezop-agentcost compare  ← provider keys only, NO GitHub token
+#   comment (pod 2)  post the sticky PR comment from check's output        ← GitHub token, never runs repo code
+#   gate    (pod 3)  exit with agentcost's code: 0 ok/inconclusive · 1 regression (workflow fails) · 2 error
+#
+# The PR's code (install-command, the agent itself) runs only in check's main container, which never sees the
+# GitHub token. It does see the provider keys it needs: use dedicated, low-limit keys, and run this only for
+# trusted PRs (same-repo branches from owners, members, or collaborators), never for forks.
+#
+# Expects a Secret named "agentcost" in the workflow's namespace: anthropic-api-key and/or openai-api-key, and
+# optionally github-token (contents: read, pull requests: write).
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: agentcost-
+spec:
+  entrypoint: main
+  activeDeadlineSeconds: 3600          # hard stop for the whole check; spend_cap_usd in agentcost.yml caps money
+  podGC:
+    strategy: OnPodCompletion
+  arguments:
+    parameters:
+      - name: repo-url                 # https clone URL of the agent repo
+      - name: revision                 # PR head commit SHA (not a merge commit)
+      - name: pr-number                # optional: set to post the sticky comment on the PR
+        value: ""
+      - name: github-repo              # optional: owner/name, needed with pr-number
+        value: ""
+      - name: config
+        value: agentcost.yml           # path inside the repo
+      - name: install-command          # how to install YOUR agent's dependencies
+        value: pip install -e .
+      - name: agentcost-install        # pip requirement: a version, TestPyPI options, or a git URL
+        value: ezop-agentcost==0.1.0
+
+  templates:
+    - name: main
+      steps:
+        - - name: check
+            template: check
+        - - name: comment
+            template: comment
+            when: "'{{workflow.parameters.pr-number}}' != ''"
+            arguments:
+              parameters:
+                - name: comment
+                  value: "{{steps.check.outputs.parameters.comment}}"
+        - - name: gate
+            template: gate
+            arguments:
+              parameters:
+                - name: code
+                  value: "{{steps.check.outputs.parameters.exit-code}}"
+
+    # ---------------------------------------------------------------------------------------- 1. run the check
+    - name: check
+      volumes:
+        - name: work
+          emptyDir: {}
+      outputs:
+        parameters:
+          - name: exit-code
+            valueFrom: {path: /work/exit-code, default: "2"}
+          - name: verdict              # regression | inconclusive | ok | error
+            valueFrom: {path: /work/verdict, default: error}
+          - name: comment              # the rendered PR comment (a few KB)
+            valueFrom: {path: /work/out/comment.md, default: ""}
+        artifacts:                     # needs an artifact repository; skipped when none is configured
+          - name: agentcost-report
+            path: /work/out
+            optional: true
+      initContainers:
+        - name: clone                  # only git runs here: no code from the repo is executed
+          image: python:3.12           # same image as the check; ships git
+          mirrorVolumeMounts: true
+          env:
+            - {name: REPO_URL, value: "{{workflow.parameters.repo-url}}"}
+            - {name: REVISION, value: "{{workflow.parameters.revision}}"}
+            - name: GITHUB_TOKEN       # read access, for private repos
+              valueFrom: {secretKeyRef: {name: agentcost, key: github-token, optional: true}}
+          command: [sh, -c]
+          args:
+            - |
+              set -eu
+              # Pass the token per command (-c), so it is never written into repo/.git/config,
+              # which the PR's code can read in the next container.
+              auth=""
+              if [ -n "${GITHUB_TOKEN:-}" ]; then
+                auth="url.https://x-access-token:${GITHUB_TOKEN}@github.com/.insteadOf=https://github.com/"
+              fi
+              g() { if [ -n "$auth" ]; then git -c "$auth" "$@"; else git "$@"; fi; }
+              # Full clone, full history: compare needs the merge base with origin/<ci.main_branch>, and checks
+              # the base out offline in the next container, which has no token to fetch with.
+              g clone --quiet --no-tags "$REPO_URL" /work/repo
+              cd /work/repo
+              # Fetch the head commit if the clone doesn't have it.
+              git cat-file -e "${REVISION}^{commit}" 2>/dev/null || g fetch --quiet origin "$REVISION"
+              git checkout --quiet --detach "$REVISION"
+      container:
+        image: python:3.12             # full image: ships git
+        workingDir: /work/repo
+        resources:
+          requests: {cpu: "2", memory: 2Gi}   # agent.concurrency subprocesses run in parallel
+          limits: {memory: 4Gi}
+        volumeMounts:
+          - {name: work, mountPath: /work}
+        env:
+          # Parameters reach the script only through env, never interpolated into it.
+          - {name: CONFIG, value: "{{workflow.parameters.config}}"}
+          - {name: INSTALL_COMMAND, value: "{{workflow.parameters.install-command}}"}
+          - {name: AGENTCOST_INSTALL, value: "{{workflow.parameters.agentcost-install}}"}
+          # Provider keys only: no GitHub token in this container. Never mount production credentials for systems
+          # the agent writes to (Zendesk, Slack, email): agentcost runs your real tools.
+          - name: ANTHROPIC_API_KEY
+            valueFrom: {secretKeyRef: {name: agentcost, key: anthropic-api-key, optional: true}}
+          - name: OPENAI_API_KEY
+            valueFrom: {secretKeyRef: {name: agentcost, key: openai-api-key, optional: true}}
+        command: [bash, -c]
+        args:
+          - |
+            set -uo pipefail
+            echo 2 > /work/exit-code
+            echo error > /work/verdict
+            mkdir -p /work/out
+
+            python -m venv /work/venv && source /work/venv/bin/activate || exit 0
+            bash -c "$INSTALL_COMMAND" || { echo "install-command failed"; exit 0; }
+            pip install --quiet $AGENTCOST_INSTALL || exit 0   # word-split on purpose: may carry pip options
+
+            ezop-agentcost compare --config "$CONFIG" --out-dir /work/out
+            echo $? > /work/exit-code
+            if [ -f /work/out/diff.json ]; then
+              python -c "import json; print(json.load(open('/work/out/diff.json'))['verdict'])" > /work/verdict
+            fi
+            exit 0   # the gate step turns exit-code into the workflow result, after the comment is posted
+
+    # ------------------------------------------------------------------------------- 2. post the PR comment
+    - name: comment
+      inputs:
+        parameters:
+          - name: comment
+      script:
+        image: python:3.12
+        env:
+          - {name: PR_NUMBER, value: "{{workflow.parameters.pr-number}}"}
+          - {name: GITHUB_REPO, value: "{{workflow.parameters.github-repo}}"}
+          - {name: AGENTCOST_INSTALL, value: "{{workflow.parameters.agentcost-install}}"}
+          - {name: COMMENT, value: "{{inputs.parameters.comment}}"}
+          - name: GITHUB_TOKEN         # pull requests: write
+            valueFrom: {secretKeyRef: {name: agentcost, key: github-token, optional: true}}
+        command: [bash]
+        source: |
+          set -euo pipefail
+          if [ -z "${GITHUB_TOKEN:-}" ] || [ -z "$GITHUB_REPO" ] || [ -z "$COMMENT" ]; then
+            echo "nothing to post (missing token, github-repo, or comment)"; exit 0
+          fi
+          pip install --quiet $AGENTCOST_INSTALL
+          python - <<'PY'
+          import os
+          from ezop_agentcost.github import GitHub
+
+          gh = GitHub(os.environ["GITHUB_TOKEN"], os.environ["GITHUB_REPO"])
+          print("PR comment:", gh.upsert_comment(int(os.environ["PR_NUMBER"]), os.environ["COMMENT"]))
+          PY
+
+    # --------------------------------------------------------------------------------- 3. set the result
+    - name: gate
+      inputs:
+        parameters:
+          - name: code
+      script:
+        image: alpine:3.20
+        env:
+          - {name: CODE, value: "{{inputs.parameters.code}}"}
+        command: [sh]
+        source: |
+          echo "agentcost exit code: ${CODE:-2}"
+          exit "${CODE:-2}"

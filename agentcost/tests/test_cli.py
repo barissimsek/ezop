@@ -57,3 +57,12 @@ def test_config_errors_exit_2(tmp_path):
     (tmp_path / "bad.json").write_text("{}")
     r = agentcost("diff", "bad.json", "bad.json", cwd=tmp_path)
     assert r.returncode == 2 and "schema_version" in r.stderr
+
+
+def test_init_workflow_template_matches_ci_example():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    template = root / "src" / "ezop_agentcost" / "templates" / "workflow.yml"
+    example = root / "ci" / "github" / "workflows" / "agentcost.yml"
+    assert template.read_text() == example.read_text(), "keep ci/github/workflows/agentcost.yml in sync with init"

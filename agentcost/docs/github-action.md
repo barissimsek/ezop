@@ -1,6 +1,6 @@
 # GitHub Action
 
-agentcost ships a composite action in this directory. One workflow covers both modes. On pushes to `main`, the
+agentcost ships a composite action in [`ci/github/`](../ci/github/), with an example workflow next to it. One workflow covers both modes. On pushes to `main`, the
 action runs the commit and uploads its report as a baseline. On pull requests, it compares the PR head with the
 merge base and posts a sticky comment.
 
@@ -39,7 +39,7 @@ jobs:
         run: pip install -e .
 
       - name: Agent cost check
-        uses: ezop-ai/ezop/agentcost@main
+        uses: ezop-ai/ezop/agentcost/ci/github@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:

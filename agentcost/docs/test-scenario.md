@@ -269,7 +269,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install anthropic
-      - uses: <owner>/ezop/agentcost@<branch-or-tag>
+      - uses: <owner>/ezop/agentcost/ci/github@<branch-or-tag>
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:

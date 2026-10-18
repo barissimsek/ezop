@@ -50,7 +50,8 @@ examples/support_agent/
   support_agent/  the reference agent (five tools + a refinement loop)
   mock_claude.py  offline Messages API stand-in used by tests and the benchmark
   benchmark.py    the seeded-regression benchmark
-action.yml        the composite GitHub Action
+ci/               CI integrations, one folder per CI system
+  github/         the composite GitHub Action (action.yml) and an example workflow
 ```
 
 ## Tests

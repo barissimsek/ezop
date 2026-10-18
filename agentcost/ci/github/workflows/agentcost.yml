@@ -1,0 +1,41 @@
+name: agentcost
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read          # look up cached baseline artifacts
+  pull-requests: write   # sticky PR comment
+
+concurrency:
+  group: agentcost-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agentcost:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the PR head itself, not GitHub's test merge with current main,
+          # so the delta holds only this PR's changes. Full history for merge-base.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the agent
+        run: pip install -e .
+
+      - name: Agent cost check
+        uses: ezop-ai/ezop/agentcost/ci/github@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
