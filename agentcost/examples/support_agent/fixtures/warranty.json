@@ -1,0 +1,6 @@
+{
+ "input": {
+  "message": "The stove from order 1047 stopped igniting after a month. Is that covered?"
+ },
+ "assert": "check_answer"
+}
