@@ -1,0 +1,66 @@
+{
+ "ada.lovelace@example.com": {
+  "email": "ada.lovelace@example.com",
+  "name": "Ada Lovelace",
+  "tier": "standard",
+  "since": "2018-01-15",
+  "lifetime_orders": 3,
+  "open_tickets": 0
+ },
+ "grace.hopper@example.com": {
+  "email": "grace.hopper@example.com",
+  "name": "Grace Hopper",
+  "tier": "plus",
+  "since": "2019-02-15",
+  "lifetime_orders": 5,
+  "open_tickets": 1
+ },
+ "alan.turing@example.com": {
+  "email": "alan.turing@example.com",
+  "name": "Alan Turing",
+  "tier": "pro",
+  "since": "2020-03-15",
+  "lifetime_orders": 7,
+  "open_tickets": 0
+ },
+ "katherine.johnson@example.com": {
+  "email": "katherine.johnson@example.com",
+  "name": "Katherine Johnson",
+  "tier": "standard",
+  "since": "2021-04-15",
+  "lifetime_orders": 9,
+  "open_tickets": 1
+ },
+ "linus.pauling@example.com": {
+  "email": "linus.pauling@example.com",
+  "name": "Linus Pauling",
+  "tier": "plus",
+  "since": "2022-05-15",
+  "lifetime_orders": 11,
+  "open_tickets": 0
+ },
+ "mae.jemison@example.com": {
+  "email": "mae.jemison@example.com",
+  "name": "Mae Jemison",
+  "tier": "pro",
+  "since": "2023-06-15",
+  "lifetime_orders": 13,
+  "open_tickets": 1
+ },
+ "tim.berners@example.com": {
+  "email": "tim.berners@example.com",
+  "name": "Tim Berners",
+  "tier": "standard",
+  "since": "2024-07-15",
+  "lifetime_orders": 15,
+  "open_tickets": 0
+ },
+ "hedy.lamarr@example.com": {
+  "email": "hedy.lamarr@example.com",
+  "name": "Hedy Lamarr",
+  "tier": "plus",
+  "since": "2018-08-15",
+  "lifetime_orders": 17,
+  "open_tickets": 1
+ }
+}

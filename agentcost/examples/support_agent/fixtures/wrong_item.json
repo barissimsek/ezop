@@ -1,0 +1,6 @@
+{
+ "input": {
+  "message": "Order 1043 came with the wrong headlamp. What now?"
+ },
+ "assert": "check_answer"
+}

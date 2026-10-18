@@ -1,0 +1,29 @@
+# agentcost configuration. Reference: https://github.com/ezop-ai/ezop/blob/main/agentcost/docs/configuration.md
+
+agent:
+  # One fixture per process. {fixture} is a JSON file holding the fixture's "input";
+  # the agent writes its final answer to {output}.
+  run: python agentcost_entry.py --input {fixture} --output {output}
+  timeout_s: 300
+  concurrency: 8
+
+fixtures: fixtures/*.json
+samples: 3                    # runs per fixture; variance is measured, not guessed
+
+quality:
+  assert: fixtures/asserts.py # functions named by each fixture's "assert" key
+  max_quality_drop: 5%
+
+budgets:
+  max_regression: 15%         # gate only when the whole 95% CI is above this
+  # cost_per_run_p50: 0.18    # optional absolute budgets, USD per run
+  # cost_per_run_p90: 0.40
+
+spend_cap_usd: 15             # hard cap per check, enforced by the proxy
+
+pricing: builtin              # or {table: builtin, overrides: {my-model: {input: 3, output: 15}}}
+token_counts: approx          # 'exact' uses Anthropic's count_tokens endpoint for Claude calls
+
+ci:
+  main_branch: main
+  # run_on_label: agentcost   # only run on PRs carrying this label

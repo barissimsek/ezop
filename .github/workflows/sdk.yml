@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ezop-sdk/**'
+      - 'platform/ezop-sdk/**'
       - '.github/workflows/sdk.yml'
   pull_request:
     paths:
-      - 'ezop-sdk/**'
+      - 'platform/ezop-sdk/**'
       - '.github/workflows/sdk.yml'
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ezop-sdk/python
+        working-directory: platform/ezop-sdk/python
 
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: ezop-sdk/python/pyproject.toml
+          cache-dependency-path: platform/ezop-sdk/python/pyproject.toml
 
       - name: Install dependencies
         run: |
