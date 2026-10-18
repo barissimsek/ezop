@@ -463,14 +463,16 @@ class RunSegmenter:
     # -- keys
 
     def _distinct_key(self, kind: str, digest: str) -> str:
+        # Tool definitions and the system prompt are keyed by role, not content: agents routinely put a timestamp
+        # or per-request detail in the system prompt, and each call's version is the same segment, not a new one.
+        if kind == "tools":
+            return "tool_schemas"
+        if kind == "system":
+            return "system_prompt"
         seen = self.distinct[kind]
         if digest not in seen:
             n = len(seen) + 1
-            if kind == "tools":
-                seen[digest] = "tool_schemas" if n == 1 else f"tool_schemas#{n}"
-            elif kind == "system":
-                seen[digest] = "system_prompt" if n == 1 else f"system_prompt#{n}"
-            elif kind == "system_message":
+            if kind == "system_message":
                 seen[digest] = f"system_message#{n}"
             else:
                 seen[digest] = "user_input" if n == 1 else f"user_message#{n - 1}"
