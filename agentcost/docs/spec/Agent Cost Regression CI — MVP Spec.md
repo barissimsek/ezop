@@ -128,6 +128,15 @@ For each fixture × sample, `agentcost`:
 - **Failures:** a crash or timeout counts as a failed sample and is reported separately, so a broken agent never looks like a cheap one.
 - **Deferred:** an in-process mode that imports a `module:function` entrypoint and captures by SDK patching. It is faster and gives call sites, but is Python-only and risks state leaking between runs.
 
+**Side-effect safety.** `agentcost` must never cause real-world actions, and the proxy cannot prevent them: tools run inside the agent's process, so a tool call executes before any LLM traffic reaches the proxy. Safety therefore comes from the environment the agent runs in, and setup requires it:
+
+- **Non-production credentials only.** CI supplies staging or sandbox credentials; read-only tools then run against test data.
+- **Stubbed write tools.** Every run sets `AGENTCOST_RUN=1`. Agents use it to swap side-effecting tools (send email, issue refund, create ticket) for stubs that return a realistic success response. Stubs change tool output identically on both branches, so cost deltas stay valid.
+- **Setup check.** `agentcost init` asks the developer to list write tools and confirm they are stubbed or sandboxed before the first run.
+- **Long-term fix:** tool record/replay cassettes remove side effects and drift together; they need a hook into the tool layer and stay deferred.
+
+This is the main adoption constraint: agents with write tools and no staging environment cannot be onboarded in 30 minutes. Early adopters are likely teams with mostly read-only agents or existing staging-based evals.
+
 ## Statistics and gating rule
 
 The check fails only when the whole 95% confidence interval lies past the regression threshold. Anything less is reported, never gated. This rule is what keeps the check from being muted.
@@ -320,6 +329,7 @@ The biggest technical risk is matching segments across runs that take different 
 | Incumbents add cost gates (Braintrust, promptfoo) | Category pressure | Lead with attribution, which totals-based gates lack |
 | Proxy mishandles streamed responses | Agent sees delays or broken streams; usage missed | Prototype the proxy first against both SDKs, streaming and non-streaming |
 | Live tool data drifts between baseline and head runs | False regressions blamed on tool results; no-op gate fires | Drift check triggers a same-time base rerun; strict mode; stable test data |
+| Agent tools write to production systems during CI runs | Real-world side effects (emails, refunds) multiplied across runs | Non-production credentials only; write tools stubbed via AGENTCOST\_RUN; init-time confirmation |
 
 **Open questions:**
 

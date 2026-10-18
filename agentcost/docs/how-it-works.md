@@ -80,8 +80,8 @@ Each call's prompt is turned into an ordered list of blocks, and each block gets
 
 | Key | Content | Identity |
 |---|---|---|
-| `tool_schemas` | tool definitions | content hash; a second distinct set becomes `tool_schemas#2` |
-| `system_prompt` | `system`, or Responses `instructions`, or a leading system/developer message | content hash |
+| `tool_schemas` | tool definitions | role: one key, even when the tool set changes between calls |
+| `system_prompt` | `system`, or Responses `instructions`, or a leading system/developer message | role: one key, even when it embeds a per-call timestamp |
 | `system_message#n` | mid-conversation system or developer messages | content hash, then occurrence |
 | `user_input` | the run's first user message (the fixture's task) | content hash |
 | `user_message#n` | later user messages (refinement prompts, sub-agent tasks) | content hash, then occurrence |

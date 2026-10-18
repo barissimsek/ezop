@@ -53,6 +53,18 @@ def test_anthropic_run_keys_carried_turns_and_mutation():
         assert sum(s["tokens"] for s in c["segments"]) == pytest.approx(500, abs=0.01)
 
 
+def test_system_prompt_with_changing_timestamp_keeps_one_key():
+    u = {"input": 500, "cache_read": 0, "cache_write_5m": 0, "cache_write_1h": 0, "output": 1}
+    calls = []
+    for i in range(3):
+        system = [*SYSTEM, {"type": "text", "text": f"Current time: 2026-10-18T07:11:5{i}"}]
+        rec = anth_call(i + 1, [{"role": "user", "content": "hi"}], [{"type": "text", "text": f"a{i}"}], u)
+        rec["request"]["system"] = system
+        calls.append(rec)
+    out = segment_run(calls, counter())
+    assert all("system_prompt" in keys(c) and not any(k.startswith("system_prompt#") for k in keys(c)) for c in out)
+
+
 def test_unknown_assistant_content_is_mutated():
     u = {"input": 100, "cache_read": 0, "cache_write_5m": 0, "cache_write_1h": 0, "output": 1}
     msgs = [
