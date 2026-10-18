@@ -5,6 +5,7 @@ Ready-to-use CI integrations for agentcost, one folder per CI system.
 | CI system | Folder | Status |
 |---|---|---|
 | GitHub Actions | [github/](github/) | composite action + example workflow |
+| Argo Workflows | [argo/](argo/) | in-repo workflow for `.argo/` |
 
 ## Any other CI system
 
@@ -17,10 +18,11 @@ Every integration is a thin wrapper around the CLI. To run agentcost anywhere el
 4. **A command:**
 
 ```bash
-ezop-agentcost compare --base origin/main --out-dir .agentcost
+ezop-agentcost compare --out-dir .agentcost     # base = merge base with origin/<ci.main_branch>
 ```
 
-`compare` runs the merge base and your head interleaved, then diffs them. It needs no CI-specific API. The
+`compare` runs the merge base and your head interleaved, then diffs them. Don't pass `--base origin/main`: an
+explicit `--base` compares against that commit itself, not the merge base. It needs no CI-specific API. The
 results land in `.agentcost/`:
 
 | File | Use |
